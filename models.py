@@ -7,6 +7,10 @@ This module implements the data models for:
 - Invoice records with hash chain
 - Transmission events and audit log
 - Contingency queue management
+
+All models inherit from Hub base models:
+- TimeStampedModel: Simple timestamps (created_at, updated_at)
+- HubBaseModel: UUID PK, multi-tenancy, soft delete, audit fields
 """
 
 from django.db import models
@@ -17,8 +21,10 @@ from decimal import Decimal
 import hashlib
 import json
 
+from apps.core.models import TimeStampedModel, HubBaseModel
 
-class VerifactuConfig(models.Model):
+
+class VerifactuConfig(TimeStampedModel):
     """
     Singleton configuration for Verifactu module.
     Stores certificate paths, API settings, and operational parameters.
@@ -117,11 +123,48 @@ class VerifactuConfig(models.Model):
         help_text=_('Maximum number of retry attempts')
     )
 
-    # Timestamps
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    # Mode Locking (RD 1007/2023 compliance)
+    # Once a mode is chosen and first invoice is created, it cannot be changed for that fiscal year
+    mode_locked = models.BooleanField(
+        _('Mode Locked'),
+        default=False,
+        help_text=_('True when mode cannot be changed (first invoice created)')
+    )
+    mode_locked_at = models.DateTimeField(
+        _('Mode Locked At'),
+        null=True,
+        blank=True,
+        help_text=_('Timestamp when mode was locked')
+    )
+    mode_locked_by = models.UUIDField(
+        _('Mode Locked By'),
+        null=True,
+        blank=True,
+        help_text=_('UUID of user who created the first invoice')
+    )
+    fiscal_year_locked = models.PositiveIntegerField(
+        _('Fiscal Year Locked'),
+        null=True,
+        blank=True,
+        help_text=_('Fiscal year when mode was locked')
+    )
 
-    class Meta:
+    # Module Protection (prevents deactivation once enabled with invoices)
+    module_activated = models.BooleanField(
+        _('Module Activated'),
+        default=False,
+        help_text=_('True after first invoice is created - prevents module deactivation')
+    )
+    first_record_date = models.DateField(
+        _('First Record Date'),
+        null=True,
+        blank=True,
+        help_text=_('Date of first Verifactu record - audit trail')
+    )
+
+    # Note: created_at and updated_at inherited from TimeStampedModel
+
+    class Meta(TimeStampedModel.Meta):
         verbose_name = _('Verifactu Configuration')
         verbose_name_plural = _('Verifactu Configuration')
 
@@ -160,11 +203,118 @@ class VerifactuConfig(models.Model):
             return None
         return (self.certificate_expiry - timezone.now().date()).days
 
+    def can_change_mode(self):
+        """Check if mode can be changed (not locked for current fiscal year)."""
+        if not self.mode_locked:
+            return True
 
-class VerifactuRecord(models.Model):
+        current_year = timezone.now().year
+        # Mode is locked but for a different fiscal year - can change
+        if self.fiscal_year_locked and self.fiscal_year_locked != current_year:
+            return True
+
+        return False
+
+    def lock_mode(self, user_id=None):
+        """
+        Lock the current mode. Called when first invoice is created.
+
+        Args:
+            user_id: UUID of the user creating the first invoice
+
+        This makes the mode irreversible for the current fiscal year.
+        """
+        if self.mode_locked:
+            return  # Already locked
+
+        self.mode_locked = True
+        self.mode_locked_at = timezone.now()
+        self.mode_locked_by = user_id
+        self.fiscal_year_locked = timezone.now().year
+        self.module_activated = True
+        self.first_record_date = timezone.now().date()
+        self.save(update_fields=[
+            'mode_locked', 'mode_locked_at', 'mode_locked_by',
+            'fiscal_year_locked', 'module_activated', 'first_record_date',
+            'updated_at'
+        ])
+
+    def can_deactivate_module(self):
+        """
+        Check if Verifactu module can be deactivated.
+
+        Returns False if:
+        - module_activated is True (records have been created)
+        - There are any VerifactuRecords in the database
+
+        Spanish law requires maintaining records for 4+ years.
+        """
+        if self.module_activated:
+            return False
+
+        # Double-check: if there are any records, module cannot be deactivated
+        if VerifactuRecord.objects.exists():
+            return False
+
+        return True
+
+    def get_mode_lock_info(self):
+        """Get human-readable information about mode lock status."""
+        if not self.mode_locked:
+            return {
+                'locked': False,
+                'message': _('Mode can be changed until first invoice or ticket is created'),
+                'can_change': True
+            }
+
+        current_year = timezone.now().year
+        if self.fiscal_year_locked != current_year:
+            return {
+                'locked': True,
+                'message': _('Mode was locked in %(year)s. New fiscal year allows mode change.') % {
+                    'year': self.fiscal_year_locked
+                },
+                'can_change': True,
+                'fiscal_year': self.fiscal_year_locked
+            }
+
+        return {
+            'locked': True,
+            'message': _('Mode locked since %(date)s for fiscal year %(year)s') % {
+                'date': self.mode_locked_at.strftime('%Y-%m-%d %H:%M') if self.mode_locked_at else 'N/A',
+                'year': self.fiscal_year_locked
+            },
+            'can_change': False,
+            'fiscal_year': self.fiscal_year_locked,
+            'locked_at': self.mode_locked_at
+        }
+
+    @property
+    def is_protected(self):
+        """Check if this config is protected from deletion."""
+        return self.module_activated or VerifactuRecord.objects.exists()
+
+    def delete(self, *args, **kwargs):
+        """Override delete to prevent deletion if protected."""
+        if self.is_protected:
+            raise ValueError(
+                _('Cannot delete Verifactu configuration: module has been activated '
+                  'and records exist. Spanish law requires maintaining these records.')
+            )
+        super().delete(*args, **kwargs)
+
+
+class VerifactuRecord(HubBaseModel):
     """
     Individual Verifactu record linked to an invoice.
     Implements SHA-256 hash chain for integrity and traceability.
+
+    Inherits from HubBaseModel:
+    - id: UUID primary key
+    - hub_id: Multi-tenancy support
+    - created_at, updated_at: Timestamps
+    - created_by, updated_by: Audit fields
+    - is_deleted, deleted_at: Soft delete support
     """
 
     class RecordType(models.TextChoices):
@@ -201,14 +351,13 @@ class VerifactuRecord(models.Model):
         help_text=_('Sequential number for hash chain ordering')
     )
 
-    # Invoice Reference
-    invoice = models.ForeignKey(
-        'invoicing.Invoice',
-        on_delete=models.PROTECT,
-        related_name='verifactu_records',
-        verbose_name=_('Invoice'),
+    # Invoice Reference (optional - may not have invoicing module installed)
+    # Using a UUID field instead of ForeignKey to avoid dependency on invoicing module
+    invoice_id = models.UUIDField(
+        _('Invoice ID'),
         null=True,
-        blank=True
+        blank=True,
+        help_text=_('UUID of the related invoice (if invoicing module is installed)')
     )
 
     # Issuer Data (snapshot at record creation)
@@ -323,11 +472,10 @@ class VerifactuRecord(models.Model):
         help_text=_('Generated XML for this record')
     )
 
-    # Timestamps
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    # Note: id, hub_id, created_at, updated_at, created_by, updated_by,
+    # is_deleted, deleted_at inherited from HubBaseModel
 
-    class Meta:
+    class Meta(HubBaseModel.Meta):
         verbose_name = _('Verifactu Record')
         verbose_name_plural = _('Verifactu Records')
         ordering = ['-sequence_number']
@@ -391,6 +539,8 @@ class VerifactuRecord(models.Model):
         return base_url + params
 
     def save(self, *args, **kwargs):
+        is_new = self._state.adding
+
         # Auto-set generation timestamp
         if not self.generation_timestamp:
             self.generation_timestamp = timezone.now()
@@ -405,11 +555,20 @@ class VerifactuRecord(models.Model):
 
         super().save(*args, **kwargs)
 
+        # Lock mode on first record creation
+        if is_new:
+            config = VerifactuConfig.get_config()
+            if not config.mode_locked:
+                config.lock_mode(user_id=self.created_by)
 
-class VerifactuEvent(models.Model):
+
+class VerifactuEvent(TimeStampedModel):
     """
     Audit log for Verifactu events.
     Tracks all system events, errors, and transmission attempts.
+
+    Inherits from TimeStampedModel:
+    - created_at, updated_at: Timestamps
     """
 
     class EventType(models.TextChoices):
@@ -462,7 +621,9 @@ class VerifactuEvent(models.Model):
     )
     timestamp = models.DateTimeField(_('Timestamp'), auto_now_add=True)
 
-    class Meta:
+    # Note: created_at and updated_at inherited from TimeStampedModel
+
+    class Meta(TimeStampedModel.Meta):
         verbose_name = _('Verifactu Event')
         verbose_name_plural = _('Verifactu Events')
         ordering = ['-timestamp']
@@ -487,10 +648,13 @@ class VerifactuEvent(models.Model):
         )
 
 
-class ContingencyQueue(models.Model):
+class ContingencyQueue(TimeStampedModel):
     """
     Queue for records pending transmission during contingency mode.
     Used when AEAT is unavailable or connection fails.
+
+    Inherits from TimeStampedModel:
+    - created_at, updated_at: Timestamps
     """
 
     class Priority(models.IntegerChoices):
@@ -535,7 +699,9 @@ class ContingencyQueue(models.Model):
         default=Status.PENDING
     )
 
-    class Meta:
+    # Note: created_at and updated_at inherited from TimeStampedModel
+
+    class Meta(TimeStampedModel.Meta):
         verbose_name = _('Contingency Queue Entry')
         verbose_name_plural = _('Contingency Queue')
         ordering = ['priority', 'queued_at']

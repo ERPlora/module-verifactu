@@ -6,7 +6,7 @@
     "description": "Spanish electronic invoicing compliance (VERI*FACTU) - Real Decreto 1007/2023",
     "description_es": "Cumplimiento normativo de facturación electrónica española (VERI*FACTU) - Real Decreto 1007/2023",
     "author": "ERPlora",
-    "category": "compliance",
+    "category": "legal",
     "tags": ["spain", "aeat", "tax", "compliance", "invoicing", "legal", "verifactu", "electronic-invoicing"],
     "icon": "shield-checkmark-outline",
     "color": "#16a34a",

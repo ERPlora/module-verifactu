@@ -1,7 +1,13 @@
-{% extends "verifactu/base.html" %}
+{% extends "dashboard/layout.html" %}
 {% load i18n %}
 
-{% block page_title %}{% trans "Events" %}{% endblock %}
+{% block page_title %}{% trans "Verifactu Events" %}{% endblock %}
+
+{% block section_tabbar %}
+<ion-footer>
+{% include "verifactu/partials/tabbar.html" with current_view='events' %}
+</ion-footer>
+{% endblock %}
 
 {% block dashboard_content %}
 {% include "verifactu/partials/events_content.html" %}

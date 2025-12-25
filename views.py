@@ -3,18 +3,26 @@ Views for Verifactu Module
 Spanish electronic invoicing compliance (VERI*FACTU).
 """
 
+import os
+import json
+from datetime import timedelta
+
 from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from django.db.models import Count, Q
-from datetime import timedelta
-import json
+from django.conf import settings
 
 from .models import VerifactuConfig, VerifactuRecord, VerifactuEvent, ContingencyQueue
 from .services import ContingencyManager
 from .services.contingency import get_contingency_manager
+
+
+def is_demo_mode():
+    """Check if Verifactu is running in demo mode."""
+    return os.environ.get('VERIFACTU_DEMO_MODE', 'false').lower() in ('true', '1', 'yes')
 
 
 @require_http_methods(["GET"])
@@ -40,7 +48,7 @@ def dashboard(request):
         generation_timestamp__date__gte=month_start
     ).count()
     pending_records = VerifactuRecord.objects.filter(
-        transmission_status='pending'
+        status='pending'
     ).count()
 
     # Recent records
@@ -56,6 +64,8 @@ def dashboard(request):
         status__in=['pending', 'retrying']
     ).count()
 
+    demo_mode = is_demo_mode()
+
     context = {
         'config': config,
         'status': status,
@@ -67,6 +77,7 @@ def dashboard(request):
         'recent_events': recent_events,
         'queue_count': queue_count,
         'is_configured': config is not None and config.certificate_path,
+        'demo_mode': demo_mode,
     }
 
     if request.headers.get('HX-Request'):
@@ -94,7 +105,7 @@ def records_list(request):
         )
 
     if status_filter:
-        records = records.filter(transmission_status=status_filter)
+        records = records.filter(status=status_filter)
 
     if record_type:
         records = records.filter(record_type=record_type)
@@ -104,8 +115,8 @@ def records_list(request):
         'search': search,
         'status_filter': status_filter,
         'record_type': record_type,
-        'status_choices': VerifactuRecord.STATUS_CHOICES,
-        'type_choices': VerifactuRecord.TYPE_CHOICES,
+        'status_choices': VerifactuRecord.TransmissionStatus.choices,
+        'type_choices': VerifactuRecord.RecordType.choices,
     }
 
     if request.headers.get('HX-Target') == 'records-table-container':
@@ -189,17 +200,188 @@ def settings_view(request):
             }, status=400)
 
     # GET request
+    demo_mode = is_demo_mode()
+
+    # Get mode lock info
+    mode_lock_info = config.get_mode_lock_info() if config else {'locked': False, 'can_change': True}
+
     context = {
         'config': config,
         'environments': [
             ('testing', 'Pruebas (AEAT Test)'),
             ('production', 'Producción'),
         ],
+        'demo_mode': demo_mode,
+        'mode_lock_info': mode_lock_info,
+        'modes': VerifactuConfig.Mode.choices,
     }
 
     if request.headers.get('HX-Request'):
         return render(request, 'verifactu/partials/settings_content.html', context)
     return render(request, 'verifactu/settings.html', context)
+
+
+@require_http_methods(["POST"])
+@login_required
+def change_mode(request):
+    """
+    Change Verifactu operating mode (VERI*FACTU or NO VERI*FACTU).
+    Only allowed if mode is not locked for current fiscal year.
+    """
+    config = VerifactuConfig.get_config()
+
+    if not config.can_change_mode():
+        return JsonResponse({
+            'success': False,
+            'error': 'El modo está bloqueado para este año fiscal. '
+                     'Una vez creada la primera factura o ticket, el modo no puede cambiar hasta el próximo año.',
+        }, status=403)
+
+    try:
+        data = json.loads(request.body) if request.content_type == 'application/json' else request.POST
+        new_mode = data.get('mode', '')
+
+        if new_mode not in [VerifactuConfig.Mode.VERIFACTU, VerifactuConfig.Mode.NO_VERIFACTU]:
+            return JsonResponse({
+                'success': False,
+                'error': 'Modo inválido',
+            }, status=400)
+
+        old_mode = config.mode
+        config.mode = new_mode
+        config.save()
+
+        # Log the change
+        VerifactuEvent.log(
+            event_type='config_changed',
+            message=f'Modo cambiado de {old_mode} a {new_mode}',
+            severity='warning',
+            details={'old_mode': old_mode, 'new_mode': new_mode}
+        )
+
+        return JsonResponse({
+            'success': True,
+            'message': f'Modo cambiado a {config.get_mode_display()}',
+            'mode': new_mode,
+            'mode_display': config.get_mode_display(),
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e),
+        }, status=400)
+
+
+@require_http_methods(["POST"])
+@login_required
+def upload_certificate(request):
+    """
+    Upload and save a PKCS#12 certificate file.
+    The certificate is saved in MEDIA_ROOT/verifactu/certificates/
+    """
+    if 'certificate' not in request.FILES:
+        return JsonResponse({
+            'success': False,
+            'error': 'No se ha proporcionado ningún archivo',
+        }, status=400)
+
+    certificate_file = request.FILES['certificate']
+    password = request.POST.get('password', '')
+
+    # Validate file extension
+    if not certificate_file.name.lower().endswith(('.p12', '.pfx')):
+        return JsonResponse({
+            'success': False,
+            'error': 'El archivo debe ser un certificado PKCS#12 (.p12 o .pfx)',
+        }, status=400)
+
+    # Create certificates directory in media
+    certificates_dir = os.path.join(settings.MEDIA_ROOT, 'verifactu', 'certificates')
+    os.makedirs(certificates_dir, exist_ok=True)
+
+    # Generate unique filename
+    import uuid
+    filename = f"certificate_{uuid.uuid4().hex[:8]}.p12"
+    filepath = os.path.join(certificates_dir, filename)
+
+    # Save the file
+    try:
+        with open(filepath, 'wb') as f:
+            for chunk in certificate_file.chunks():
+                f.write(chunk)
+
+        # Validate the certificate (try to load it)
+        try:
+            from cryptography.hazmat.primitives.serialization import pkcs12
+            from cryptography import x509
+
+            with open(filepath, 'rb') as f:
+                cert_data = f.read()
+
+            # Try to load the certificate with the password
+            private_key, certificate, additional_certs = pkcs12.load_key_and_certificates(
+                cert_data,
+                password.encode() if password else None
+            )
+
+            if certificate is None:
+                os.remove(filepath)
+                return JsonResponse({
+                    'success': False,
+                    'error': 'No se pudo leer el certificado. Verifica la contraseña.',
+                }, status=400)
+
+            # Get certificate expiry date
+            expiry_date = certificate.not_valid_after_utc.date()
+
+            # Get certificate subject (for display)
+            subject = certificate.subject.rfc4514_string()
+
+        except ImportError:
+            # cryptography library not available, skip validation
+            expiry_date = None
+            subject = None
+
+        except Exception as e:
+            os.remove(filepath)
+            return JsonResponse({
+                'success': False,
+                'error': f'Error al validar el certificado: {str(e)}',
+            }, status=400)
+
+        # Update configuration
+        config = VerifactuConfig.get_config()
+        config.certificate_path = filepath
+        config.certificate_password = password  # Note: Should be encrypted in production
+        if expiry_date:
+            config.certificate_expiry = expiry_date
+        config.save()
+
+        # Log the event
+        VerifactuEvent.log(
+            event_type='config_changed',
+            message=f'Certificado cargado: {certificate_file.name}',
+            severity='info',
+            details={'subject': subject, 'expiry': str(expiry_date) if expiry_date else None}
+        )
+
+        return JsonResponse({
+            'success': True,
+            'message': 'Certificado cargado correctamente',
+            'certificate_path': filepath,
+            'expiry_date': str(expiry_date) if expiry_date else None,
+            'subject': subject,
+        })
+
+    except Exception as e:
+        # Clean up on error
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        return JsonResponse({
+            'success': False,
+            'error': f'Error al guardar el certificado: {str(e)}',
+        }, status=500)
 
 
 @require_http_methods(["GET"])
@@ -214,12 +396,12 @@ def contingency_view(request):
     # Get queued records
     queued = ContingencyQueue.objects.filter(
         status__in=['pending', 'retrying']
-    ).select_related('record').order_by('priority', 'created_at')[:50]
+    ).select_related('record').order_by('priority', 'queued_at')[:50]
 
     # Get failed records
     failed = ContingencyQueue.objects.filter(
         status='failed'
-    ).select_related('record').order_by('-updated_at')[:20]
+    ).select_related('record').order_by('-last_attempt_at')[:20]
 
     # Recent events
     events = VerifactuEvent.objects.order_by('-timestamp')[:20]
@@ -266,23 +448,41 @@ def process_queue(request):
 def verify_chain(request):
     """
     Verify hash chain integrity.
+    In demo mode, returns a simulated valid chain.
+    Returns HTML partial for HTMX requests, JSON for API calls.
     """
-    contingency = get_contingency_manager()
+    is_valid = False
+    message = ''
 
-    try:
-        is_valid, error_message = contingency.verify_hash_chain()
+    # Demo mode - simulate valid chain
+    if is_demo_mode():
+        record_count = VerifactuRecord.objects.count()
+        is_valid = True
+        message = f'Cadena verificada (Modo Demo): {record_count} registros'
+    else:
+        contingency = get_contingency_manager()
 
-        return JsonResponse({
-            'success': True,
-            'is_valid': is_valid,
-            'message': error_message or 'Cadena de hash verificada correctamente',
+        try:
+            is_valid, error_message = contingency.verify_hash_chain()
+            message = error_message or 'Cadena de hash verificada correctamente'
+        except Exception as e:
+            is_valid = False
+            message = str(e)
+
+    # HTMX request - return HTML partial
+    if request.headers.get('HX-Request'):
+        return render(request, 'verifactu/partials/result_badge.html', {
+            'success': is_valid,
+            'message': message,
         })
 
-    except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'error': str(e),
-        }, status=500)
+    # API request - return JSON
+    return JsonResponse({
+        'success': True,
+        'is_valid': is_valid,
+        'message': message,
+        'demo_mode': is_demo_mode(),
+    })
 
 
 @require_http_methods(["POST"])
@@ -290,38 +490,52 @@ def verify_chain(request):
 def test_connection(request):
     """
     Test connection to AEAT.
+    In demo mode, simulates a successful connection.
+    Returns HTML partial for HTMX requests, JSON for API calls.
     """
-    config = VerifactuConfig.get_config()
+    success = False
+    message = ''
 
-    if not config or not config.certificate_path:
-        return JsonResponse({
-            'success': False,
-            'error': 'No hay certificado configurado',
-        }, status=400)
+    # Demo mode - simulate successful connection
+    if is_demo_mode():
+        success = True
+        message = 'Conexión simulada exitosa (Modo Demo)'
+    else:
+        config = VerifactuConfig.get_config()
 
-    try:
-        from .services import AEATClient
-        from .services.aeat_client import AEATEnvironment
+        if not config or not config.certificate_path:
+            success = False
+            message = 'No hay certificado configurado. Carga un certificado primero.'
+        else:
+            try:
+                from .services.aeat_client import AEATClient, AEATEnvironment
 
-        env = AEATEnvironment.PRODUCTION if config.environment == 'production' else AEATEnvironment.TESTING
+                env = AEATEnvironment.PRODUCTION if config.environment == 'production' else AEATEnvironment.TESTING
 
-        with AEATClient(
-            certificate_path=config.certificate_path,
-            certificate_password=config.certificate_password,
-            environment=env,
-        ) as client:
-            success, message = client.test_connection()
+                with AEATClient(
+                    certificate_path=config.certificate_path,
+                    certificate_password=config.certificate_password,
+                    environment=env,
+                ) as client:
+                    success, message = client.test_connection()
 
-        return JsonResponse({
+            except Exception as e:
+                success = False
+                message = str(e)
+
+    # HTMX request - return HTML partial
+    if request.headers.get('HX-Request'):
+        return render(request, 'verifactu/partials/result_badge.html', {
             'success': success,
             'message': message,
         })
 
-    except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'error': str(e),
-        }, status=500)
+    # API request - return JSON
+    return JsonResponse({
+        'success': success,
+        'message': message,
+        'demo_mode': is_demo_mode(),
+    })
 
 
 @require_http_methods(["GET"])
@@ -337,7 +551,7 @@ def health_check(request):
     return JsonResponse({
         'healthy': is_healthy,
         'message': message,
-        'mode': status.mode.value,
+        'mode': status.mode_value,
         'queue_size': status.queue_size,
         'can_create_records': status.can_create_records,
     })

@@ -498,6 +498,12 @@ class ContingencyQueue(models.Model):
         NORMAL = 2, _('Normal')
         LOW = 3, _('Low')
 
+    class Status(models.TextChoices):
+        PENDING = 'pending', _('Pending')
+        RETRYING = 'retrying', _('Retrying')
+        FAILED = 'failed', _('Failed')
+        CANCELLED = 'cancelled', _('Cancelled')
+
     record = models.OneToOneField(
         VerifactuRecord,
         on_delete=models.CASCADE,
@@ -521,6 +527,12 @@ class ContingencyQueue(models.Model):
         _('Next Attempt At'),
         null=True,
         blank=True
+    )
+    status = models.CharField(
+        _('Status'),
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING
     )
 
     class Meta:

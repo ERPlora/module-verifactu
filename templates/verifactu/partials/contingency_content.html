@@ -1,0 +1,359 @@
+{% load static %}
+{% load i18n %}
+
+{% if request.htmx %}
+<div id="dashboard-tabbar" hx-swap-oob="innerHTML">
+<ion-footer>
+{% include "verifactu/partials/tabbar.html" with current_view='contingency' %}
+</ion-footer>
+</div>
+{% endif %}
+
+{% csrf_token %}
+<div x-data="contingencyApp()" class="ion-padding">
+    <!-- Page Header -->
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-2xl font-bold" style="color: var(--ion-text-color);">{% trans "Contingency Management" %}</h1>
+            <p class="text-sm mt-1" style="color: var(--ion-color-medium);">{% trans "Queue management and failure recovery" %}</p>
+        </div>
+        <ion-button @click="processQueue()" :disabled="processing">
+            <ion-spinner x-show="processing" name="crescent" slot="start"></ion-spinner>
+            <ion-icon x-show="!processing" slot="start" name="sync-outline"></ion-icon>
+            {% trans "Process Queue" %}
+        </ion-button>
+    </div>
+
+    <!-- System Status -->
+    <ion-card class="m-0 mb-4">
+        <ion-card-content class="p-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    {% if status.mode.value == 'normal' %}
+                    <div class="w-12 h-12 rounded-full bg-success/20 flex items-center justify-center">
+                        <ion-icon name="checkmark-circle" class="text-2xl text-success"></ion-icon>
+                    </div>
+                    {% elif status.mode.value == 'offline' %}
+                    <div class="w-12 h-12 rounded-full bg-danger/20 flex items-center justify-center">
+                        <ion-icon name="cloud-offline" class="text-2xl text-danger"></ion-icon>
+                    </div>
+                    {% elif status.mode.value == 'degraded' %}
+                    <div class="w-12 h-12 rounded-full bg-warning/20 flex items-center justify-center">
+                        <ion-icon name="warning" class="text-2xl text-warning"></ion-icon>
+                    </div>
+                    {% else %}
+                    <div class="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
+                        <ion-icon name="refresh" class="text-2xl text-primary"></ion-icon>
+                    </div>
+                    {% endif %}
+                    <div>
+                        <div class="text-lg font-semibold">{{ status.message }}</div>
+                        <div class="text-sm" style="color: var(--ion-color-medium);">
+                            {% trans "Mode" %}: {{ status.mode.value|title }}
+                            {% if status.failure_type %} | {% trans "Failure" %}: {{ status.failure_type.value }}{% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="text-2xl font-bold">{{ status.queue_size }}</div>
+                    <div class="text-sm" style="color: var(--ion-color-medium);">{% trans "In Queue" %}</div>
+                </div>
+            </div>
+        </ion-card-content>
+    </ion-card>
+
+    <!-- Stats Row -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <ion-card class="m-0">
+            <ion-card-content class="p-4 text-center">
+                <div class="text-2xl font-bold">{{ queued|length }}</div>
+                <div class="text-sm" style="color: var(--ion-color-medium);">{% trans "Pending" %}</div>
+            </ion-card-content>
+        </ion-card>
+        <ion-card class="m-0">
+            <ion-card-content class="p-4 text-center">
+                <div class="text-2xl font-bold">{{ failed|length }}</div>
+                <div class="text-sm" style="color: var(--ion-color-medium);">{% trans "Failed" %}</div>
+            </ion-card-content>
+        </ion-card>
+        <ion-card class="m-0">
+            <ion-card-content class="p-4 text-center">
+                <div class="text-2xl font-bold">
+                    {% if status.can_create_records %}
+                    <ion-icon name="checkmark-circle" color="success"></ion-icon>
+                    {% else %}
+                    <ion-icon name="close-circle" color="danger"></ion-icon>
+                    {% endif %}
+                </div>
+                <div class="text-sm" style="color: var(--ion-color-medium);">{% trans "Can Create" %}</div>
+            </ion-card-content>
+        </ion-card>
+        <ion-card class="m-0">
+            <ion-card-content class="p-4 text-center">
+                {% if status.last_successful_submission %}
+                <div class="text-sm font-bold">{{ status.last_successful_submission|date:"H:i" }}</div>
+                <div class="text-xs" style="color: var(--ion-color-medium);">{{ status.last_successful_submission|date:"Y-m-d" }}</div>
+                {% else %}
+                <div class="text-lg font-bold">-</div>
+                {% endif %}
+                <div class="text-sm" style="color: var(--ion-color-medium);">{% trans "Last Success" %}</div>
+            </ion-card-content>
+        </ion-card>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Pending Queue -->
+        <ion-card class="m-0">
+            <ion-card-header>
+                <ion-card-title>{% trans "Pending Queue" %}</ion-card-title>
+            </ion-card-header>
+            <ion-card-content class="p-0">
+                {% if queued %}
+                <ion-list>
+                    {% for entry in queued %}
+                    <ion-item>
+                        <ion-label>
+                            <h3>{{ entry.record.invoice_number }}</h3>
+                            <p>{{ entry.reason|truncatewords:5 }}</p>
+                            <p class="text-xs">
+                                {% trans "Retries" %}: {{ entry.retry_count }}
+                                {% if entry.next_retry %} | {% trans "Next" %}: {{ entry.next_retry|date:"H:i" }}{% endif %}
+                            </p>
+                        </ion-label>
+                        <ion-button slot="end" size="small" fill="clear" color="danger"
+                            @click="cancelEntry({{ entry.id }})">
+                            <ion-icon slot="icon-only" name="close-outline"></ion-icon>
+                        </ion-button>
+                    </ion-item>
+                    {% endfor %}
+                </ion-list>
+                {% else %}
+                <div class="text-center py-8">
+                    <ion-icon name="checkmark-circle-outline" style="font-size: 48px; color: var(--ion-color-success);"></ion-icon>
+                    <p class="mt-2" style="color: var(--ion-color-medium);">{% trans "Queue is empty" %}</p>
+                </div>
+                {% endif %}
+            </ion-card-content>
+        </ion-card>
+
+        <!-- Failed Records -->
+        <ion-card class="m-0">
+            <ion-card-header>
+                <ion-card-title>{% trans "Failed Records" %}</ion-card-title>
+            </ion-card-header>
+            <ion-card-content class="p-0">
+                {% if failed %}
+                <ion-list>
+                    {% for entry in failed %}
+                    <ion-item>
+                        <ion-label>
+                            <h3>{{ entry.record.invoice_number }}</h3>
+                            <p class="text-danger">{{ entry.last_error|truncatewords:8 }}</p>
+                            <p class="text-xs">{% trans "Failed after" %} {{ entry.retry_count }} {% trans "retries" %}</p>
+                        </ion-label>
+                        <ion-button slot="end" size="small" fill="clear" color="primary"
+                            @click="retryEntry({{ entry.id }})">
+                            <ion-icon slot="icon-only" name="refresh-outline"></ion-icon>
+                        </ion-button>
+                    </ion-item>
+                    {% endfor %}
+                </ion-list>
+                {% else %}
+                <div class="text-center py-8">
+                    <ion-icon name="thumbs-up-outline" style="font-size: 48px; color: var(--ion-color-success);"></ion-icon>
+                    <p class="mt-2" style="color: var(--ion-color-medium);">{% trans "No failed records" %}</p>
+                </div>
+                {% endif %}
+            </ion-card-content>
+        </ion-card>
+    </div>
+
+    <!-- Event Log -->
+    <ion-card class="m-0 mt-6">
+        <ion-card-header>
+            <div class="flex justify-between items-center">
+                <ion-card-title>{% trans "Recent Events" %}</ion-card-title>
+                <ion-button size="small" fill="clear"
+                    hx-get="{% url 'verifactu:events' %}"
+                    hx-target="#dashboard-content"
+                    hx-push-url="true">
+                    {% trans "View All" %}
+                </ion-button>
+            </div>
+        </ion-card-header>
+        <ion-card-content class="p-0">
+            {% if events %}
+            <ion-list>
+                {% for event in events %}
+                <ion-item>
+                    <ion-icon slot="start"
+                        name="{% if event.event_type == 'error' %}alert-circle-outline{% elif event.event_type == 'alert' %}warning-outline{% elif event.event_type == 'transmission' %}send-outline{% else %}information-circle-outline{% endif %}"
+                        color="{% if event.event_type == 'error' %}danger{% elif event.event_type == 'alert' %}warning{% elif event.event_type == 'transmission' %}success{% else %}medium{% endif %}">
+                    </ion-icon>
+                    <ion-label>
+                        <h3>{{ event.description|truncatewords:10 }}</h3>
+                        <p>{{ event.timestamp|date:"Y-m-d H:i:s" }}</p>
+                    </ion-label>
+                </ion-item>
+                {% endfor %}
+            </ion-list>
+            {% else %}
+            <div class="text-center py-8">
+                <p style="color: var(--ion-color-medium);">{% trans "No recent events" %}</p>
+            </div>
+            {% endif %}
+        </ion-card-content>
+    </ion-card>
+
+    <!-- Contingency Plans -->
+    <ion-card class="m-0 mt-6">
+        <ion-card-header>
+            <ion-card-title>{% trans "Contingency Plans" %}</ion-card-title>
+        </ion-card-header>
+        <ion-card-content>
+            <ion-accordion-group>
+                <ion-accordion value="network">
+                    <ion-item slot="header">
+                        <ion-icon slot="start" name="wifi-outline"></ion-icon>
+                        <ion-label>{% trans "Network Connectivity Failure" %}</ion-label>
+                    </ion-item>
+                    <div class="p-4" slot="content">
+                        <p class="text-sm mb-2"><strong>{% trans "Detection" %}:</strong> {% trans "Connection timeouts, DNS failures" %}</p>
+                        <p class="text-sm mb-2"><strong>{% trans "Response" %}:</strong> {% trans "Queue records locally, retry with exponential backoff" %}</p>
+                        <p class="text-sm"><strong>{% trans "Recovery" %}:</strong> {% trans "Automatic when connectivity restored" %}</p>
+                    </div>
+                </ion-accordion>
+                <ion-accordion value="aeat">
+                    <ion-item slot="header">
+                        <ion-icon slot="start" name="server-outline"></ion-icon>
+                        <ion-label>{% trans "AEAT Service Unavailable" %}</ion-label>
+                    </ion-item>
+                    <div class="p-4" slot="content">
+                        <p class="text-sm mb-2"><strong>{% trans "Detection" %}:</strong> {% trans "HTTP 5xx errors, service timeouts" %}</p>
+                        <p class="text-sm mb-2"><strong>{% trans "Response" %}:</strong> {% trans "Queue records, alert if >4 hours" %}</p>
+                        <p class="text-sm"><strong>{% trans "Recovery" %}:</strong> {% trans "Monitor AEAT status, process queue when available" %}</p>
+                    </div>
+                </ion-accordion>
+                <ion-accordion value="hash">
+                    <ion-item slot="header">
+                        <ion-icon slot="start" name="link-outline"></ion-icon>
+                        <ion-label>{% trans "Hash Chain Corruption" %}</ion-label>
+                    </ion-item>
+                    <div class="p-4" slot="content">
+                        <p class="text-sm mb-2"><strong>{% trans "Detection" %}:</strong> {% trans "Hash verification failure or database restore" %}</p>
+                        <p class="text-sm mb-2"><strong>{% trans "Response" %}:</strong> {% trans "CRITICAL - Stop new records, recover chain" %}</p>
+                        <p class="text-sm mb-4"><strong>{% trans "Recovery" %}:</strong> {% trans "Query AEAT for last hash or enter manually" %}</p>
+                        <ion-button size="small"
+                            hx-get="{% url 'verifactu:recovery' %}"
+                            hx-target="#dashboard-content"
+                            hx-push-url="true">
+                            <ion-icon slot="start" name="construct-outline"></ion-icon>
+                            {% trans "Go to Chain Recovery" %}
+                        </ion-button>
+                    </div>
+                </ion-accordion>
+                <ion-accordion value="cert">
+                    <ion-item slot="header">
+                        <ion-icon slot="start" name="key-outline"></ion-icon>
+                        <ion-label>{% trans "Certificate Expiration" %}</ion-label>
+                    </ion-item>
+                    <div class="p-4" slot="content">
+                        <p class="text-sm mb-2"><strong>{% trans "Detection" %}:</strong> {% trans "SSL handshake failures, expiry date check" %}</p>
+                        <p class="text-sm mb-2"><strong>{% trans "Response" %}:</strong> {% trans "Alert 30 days before expiry" %}</p>
+                        <p class="text-sm"><strong>{% trans "Recovery" %}:</strong> {% trans "Upload new certificate in Settings" %}</p>
+                    </div>
+                </ion-accordion>
+            </ion-accordion-group>
+        </ion-card-content>
+    </ion-card>
+</div>
+
+<script>
+window.contingencyApp = function() {
+    return {
+        processing: false,
+
+        async processQueue() {
+            this.processing = true;
+            try {
+                const response = await fetch('{% url "verifactu:process_queue" %}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    }
+                });
+                const data = await response.json();
+                this.showToast(data.message, data.success ? 'success' : 'danger');
+
+                if (data.success) {
+                    // Reload page to show updated queue
+                    htmx.ajax('GET', '{% url "verifactu:contingency" %}', {target: '#dashboard-content'});
+                }
+            } catch (error) {
+                this.showToast('{% trans "Error processing queue" %}', 'danger');
+            } finally {
+                this.processing = false;
+            }
+        },
+
+        async retryEntry(id) {
+            try {
+                const response = await fetch(`/modules/verifactu/contingency/retry/${id}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    }
+                });
+                const data = await response.json();
+                this.showToast(data.message, data.success ? 'success' : 'danger');
+
+                if (data.success) {
+                    htmx.ajax('GET', '{% url "verifactu:contingency" %}', {target: '#dashboard-content'});
+                }
+            } catch (error) {
+                this.showToast('{% trans "Error" %}', 'danger');
+            }
+        },
+
+        async cancelEntry(id) {
+            if (!confirm('{% trans "Cancel this queue entry?" %}')) return;
+
+            try {
+                const response = await fetch(`/modules/verifactu/contingency/cancel/${id}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    }
+                });
+                const data = await response.json();
+                this.showToast(data.message, data.success ? 'success' : 'danger');
+
+                if (data.success) {
+                    htmx.ajax('GET', '{% url "verifactu:contingency" %}', {target: '#dashboard-content'});
+                }
+            } catch (error) {
+                this.showToast('{% trans "Error" %}', 'danger');
+            }
+        },
+
+        async showToast(message, color = 'primary') {
+            const toast = document.createElement('ion-toast');
+            toast.message = message;
+            toast.duration = 2000;
+            toast.color = color;
+            toast.position = 'top';
+            document.body.appendChild(toast);
+            await toast.present();
+        }
+    }
+};
+
+document.addEventListener('htmx:afterSwap', function(event) {
+    if (event.detail.target.id === 'dashboard-content') {
+        const alpineEl = event.detail.target.querySelector('[x-data]');
+        if (alpineEl && !alpineEl._x_dataStack) {
+            Alpine.initTree(alpineEl);
+        }
+    }
+});
+</script>

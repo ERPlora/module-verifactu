@@ -1,0 +1,8 @@
+{% extends "verifactu/base.html" %}
+{% load i18n %}
+
+{% block page_title %}{% trans "Records" %}{% endblock %}
+
+{% block dashboard_content %}
+{% include "verifactu/partials/records_content.html" %}
+{% endblock %}

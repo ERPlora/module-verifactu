@@ -1,0 +1,35 @@
+{% load i18n %}
+
+<ion-tab-bar>
+    <ion-tab-button {% if current_view == 'dashboard' %}class="tab-selected"{% endif %}
+        hx-get="{% url 'verifactu:dashboard' %}"
+        hx-target="#dashboard-content"
+        hx-push-url="true">
+        <ion-icon name="speedometer-outline"></ion-icon>
+        <ion-label>{% trans "Dashboard" %}</ion-label>
+    </ion-tab-button>
+
+    <ion-tab-button {% if current_view == 'records' %}class="tab-selected"{% endif %}
+        hx-get="{% url 'verifactu:records' %}"
+        hx-target="#dashboard-content"
+        hx-push-url="true">
+        <ion-icon name="document-text-outline"></ion-icon>
+        <ion-label>{% trans "Records" %}</ion-label>
+    </ion-tab-button>
+
+    <ion-tab-button {% if current_view == 'contingency' %}class="tab-selected"{% endif %}
+        hx-get="{% url 'verifactu:contingency' %}"
+        hx-target="#dashboard-content"
+        hx-push-url="true">
+        <ion-icon name="shield-checkmark-outline"></ion-icon>
+        <ion-label>{% trans "Contingency" %}</ion-label>
+    </ion-tab-button>
+
+    <ion-tab-button {% if current_view == 'settings' %}class="tab-selected"{% endif %}
+        hx-get="{% url 'verifactu:settings' %}"
+        hx-target="#dashboard-content"
+        hx-push-url="true">
+        <ion-icon name="settings-outline"></ion-icon>
+        <ion-label>{% trans "Settings" %}</ion-label>
+    </ion-tab-button>
+</ion-tab-bar>

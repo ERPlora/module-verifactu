@@ -1,0 +1,340 @@
+{% load static %}
+{% load i18n %}
+
+{% if request.htmx %}
+<div id="dashboard-tabbar" hx-swap-oob="innerHTML">
+<ion-footer>
+{% include "verifactu/partials/tabbar.html" with current_view='settings' %}
+</ion-footer>
+</div>
+{% endif %}
+
+{% csrf_token %}
+<div x-data="verifactuSettingsApp()" class="ion-padding">
+    <!-- Page Header -->
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-2xl font-bold" style="color: var(--ion-text-color);">{% trans "Verifactu Settings" %}</h1>
+            <p class="text-sm mt-1" style="color: var(--ion-color-medium);">{% trans "Configure AEAT connection and software information" %}</p>
+        </div>
+        <ion-button @click="saveSettings()">
+            <ion-icon slot="start" name="save-outline"></ion-icon>
+            {% trans "Save" %}
+        </ion-button>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Software Information -->
+        <ion-card class="m-0">
+            <ion-card-header>
+                <ion-card-title>{% trans "Software Information" %}</ion-card-title>
+                <ion-card-subtitle>{% trans "Required for AEAT registration" %}</ion-card-subtitle>
+            </ion-card-header>
+            <ion-card-content>
+                <div class="space-y-4">
+                    <ion-item>
+                        <ion-input
+                            label="{% trans 'Software Name' %} *"
+                            label-placement="stacked"
+                            x-model="settings.software_name"
+                            placeholder="ERPlora POS"
+                            required>
+                        </ion-input>
+                    </ion-item>
+                    <ion-item>
+                        <ion-input
+                            label="{% trans 'Software ID' %} *"
+                            label-placement="stacked"
+                            x-model="settings.software_id"
+                            placeholder="ERPLORA-001"
+                            required>
+                        </ion-input>
+                    </ion-item>
+                    <ion-item>
+                        <ion-input
+                            label="{% trans 'Software Version' %} *"
+                            label-placement="stacked"
+                            x-model="settings.software_version"
+                            placeholder="1.0.0"
+                            required>
+                        </ion-input>
+                    </ion-item>
+                    <ion-item>
+                        <ion-input
+                            label="{% trans 'Software NIF' %}"
+                            label-placement="stacked"
+                            x-model="settings.software_nif"
+                            placeholder="B00000000">
+                        </ion-input>
+                    </ion-item>
+                </div>
+            </ion-card-content>
+        </ion-card>
+
+        <!-- Environment -->
+        <ion-card class="m-0">
+            <ion-card-header>
+                <ion-card-title>{% trans "Environment" %}</ion-card-title>
+                <ion-card-subtitle>{% trans "AEAT connection settings" %}</ion-card-subtitle>
+            </ion-card-header>
+            <ion-card-content>
+                <div class="space-y-4">
+                    <ion-item>
+                        <ion-select
+                            label="{% trans 'Environment' %} *"
+                            label-placement="stacked"
+                            x-model="settings.environment"
+                            interface="popover">
+                            {% for value, label in environments %}
+                            <ion-select-option value="{{ value }}">{{ label }}</ion-select-option>
+                            {% endfor %}
+                        </ion-select>
+                    </ion-item>
+
+                    <ion-item>
+                        <ion-toggle
+                            x-model="settings.auto_submit"
+                            :checked="settings.auto_submit">
+                            {% trans "Auto-submit to AEAT" %}
+                        </ion-toggle>
+                    </ion-item>
+
+                    <div class="p-4 rounded-lg" style="background: var(--ion-color-step-50);">
+                        <div class="flex items-start gap-2">
+                            <ion-icon name="information-circle-outline" style="font-size: 20px; color: var(--ion-color-primary);"></ion-icon>
+                            <p class="text-sm" style="color: var(--ion-color-medium);">
+                                {% trans "Use Testing environment for development. Switch to Production only when ready for real submissions to AEAT." %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </ion-card-content>
+        </ion-card>
+
+        <!-- Certificate -->
+        <ion-card class="m-0">
+            <ion-card-header>
+                <ion-card-title>{% trans "Digital Certificate" %}</ion-card-title>
+                <ion-card-subtitle>{% trans "PKCS#12 certificate for AEAT authentication" %}</ion-card-subtitle>
+            </ion-card-header>
+            <ion-card-content>
+                <div class="space-y-4">
+                    <ion-item>
+                        <ion-input
+                            label="{% trans 'Certificate Path' %}"
+                            label-placement="stacked"
+                            x-model="settings.certificate_path"
+                            placeholder="/path/to/certificate.p12"
+                            readonly>
+                        </ion-input>
+                    </ion-item>
+
+                    {% if config and config.certificate_path %}
+                    <div class="flex items-center gap-2 p-3 rounded-lg" style="background: var(--ion-color-success-tint);">
+                        <ion-icon name="checkmark-circle" color="success"></ion-icon>
+                        <span class="text-sm">{% trans "Certificate configured" %}</span>
+                    </div>
+
+                    {% if config.certificate_expires %}
+                    <div class="text-sm" style="color: var(--ion-color-medium);">
+                        {% trans "Expires" %}: {{ config.certificate_expires|date:"Y-m-d" }}
+                    </div>
+                    {% endif %}
+                    {% else %}
+                    <div class="flex items-center gap-2 p-3 rounded-lg" style="background: var(--ion-color-warning-tint);">
+                        <ion-icon name="warning" color="warning"></ion-icon>
+                        <span class="text-sm">{% trans "No certificate configured" %}</span>
+                    </div>
+                    {% endif %}
+
+                    <ion-button expand="block" fill="outline" disabled>
+                        <ion-icon slot="start" name="cloud-upload-outline"></ion-icon>
+                        {% trans "Upload Certificate" %}
+                    </ion-button>
+                    <p class="text-xs text-center" style="color: var(--ion-color-medium);">
+                        {% trans "Certificate upload coming soon. Contact support for manual configuration." %}
+                    </p>
+                </div>
+            </ion-card-content>
+        </ion-card>
+
+        <!-- Connection Test -->
+        <ion-card class="m-0">
+            <ion-card-header>
+                <ion-card-title>{% trans "Connection Test" %}</ion-card-title>
+                <ion-card-subtitle>{% trans "Verify AEAT connectivity" %}</ion-card-subtitle>
+            </ion-card-header>
+            <ion-card-content>
+                <div class="space-y-4">
+                    <ion-button expand="block" @click="testConnection()" :disabled="testing">
+                        <ion-spinner x-show="testing" name="crescent" slot="start"></ion-spinner>
+                        <ion-icon x-show="!testing" slot="start" name="wifi-outline"></ion-icon>
+                        {% trans "Test Connection" %}
+                    </ion-button>
+
+                    <template x-if="connectionResult">
+                        <div class="p-3 rounded-lg"
+                            :style="connectionResult.success ? 'background: var(--ion-color-success-tint);' : 'background: var(--ion-color-danger-tint);'">
+                            <div class="flex items-center gap-2">
+                                <ion-icon
+                                    :name="connectionResult.success ? 'checkmark-circle' : 'close-circle'"
+                                    :color="connectionResult.success ? 'success' : 'danger'">
+                                </ion-icon>
+                                <span class="text-sm" x-text="connectionResult.message"></span>
+                            </div>
+                        </div>
+                    </template>
+
+                    <ion-button expand="block" fill="outline" @click="verifyChain()" :disabled="verifying">
+                        <ion-spinner x-show="verifying" name="crescent" slot="start"></ion-spinner>
+                        <ion-icon x-show="!verifying" slot="start" name="link-outline"></ion-icon>
+                        {% trans "Verify Hash Chain" %}
+                    </ion-button>
+
+                    <template x-if="chainResult">
+                        <div class="p-3 rounded-lg"
+                            :style="chainResult.is_valid ? 'background: var(--ion-color-success-tint);' : 'background: var(--ion-color-danger-tint);'">
+                            <div class="flex items-center gap-2">
+                                <ion-icon
+                                    :name="chainResult.is_valid ? 'checkmark-circle' : 'close-circle'"
+                                    :color="chainResult.is_valid ? 'success' : 'danger'">
+                                </ion-icon>
+                                <span class="text-sm" x-text="chainResult.message"></span>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </ion-card-content>
+        </ion-card>
+    </div>
+
+    <!-- Important Dates -->
+    <ion-card class="m-0 mt-6">
+        <ion-card-header>
+            <ion-card-title>{% trans "Important Dates" %}</ion-card-title>
+        </ion-card-header>
+        <ion-card-content>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="p-4 rounded-lg" style="background: var(--ion-color-step-50);">
+                    <div class="text-xs" style="color: var(--ion-color-medium);">{% trans "Software Deadline" %}</div>
+                    <div class="font-bold text-lg">29 {% trans "July" %} 2025</div>
+                    <div class="text-xs" style="color: var(--ion-color-medium);">{% trans "All software must be compliant" %}</div>
+                </div>
+                <div class="p-4 rounded-lg" style="background: var(--ion-color-step-50);">
+                    <div class="text-xs" style="color: var(--ion-color-medium);">{% trans "Corporate Deadline" %}</div>
+                    <div class="font-bold text-lg">1 {% trans "January" %} 2027</div>
+                    <div class="text-xs" style="color: var(--ion-color-medium);">{% trans "Corporate taxpayers" %}</div>
+                </div>
+                <div class="p-4 rounded-lg" style="background: var(--ion-color-step-50);">
+                    <div class="text-xs" style="color: var(--ion-color-medium);">{% trans "Autonomous Deadline" %}</div>
+                    <div class="font-bold text-lg">1 {% trans "July" %} 2027</div>
+                    <div class="text-xs" style="color: var(--ion-color-medium);">{% trans "Self-employed taxpayers" %}</div>
+                </div>
+            </div>
+        </ion-card-content>
+    </ion-card>
+</div>
+
+<script>
+window.verifactuSettingsApp = function() {
+    return {
+        settings: {
+            software_name: '{{ config.software_name|default:"ERPlora POS" }}',
+            software_id: '{{ config.software_id|default:"" }}',
+            software_version: '{{ config.software_version|default:"1.0.0" }}',
+            software_nif: '{{ config.software_nif|default:"" }}',
+            environment: '{{ config.environment|default:"testing" }}',
+            auto_submit: {{ config.auto_submit|yesno:"true,false,false" }},
+            certificate_path: '{{ config.certificate_path|default:"" }}'
+        },
+        testing: false,
+        verifying: false,
+        connectionResult: null,
+        chainResult: null,
+
+        async saveSettings() {
+            try {
+                const response = await fetch('{% url "verifactu:settings" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                    body: JSON.stringify({
+                        ...this.settings,
+                        auto_submit: this.settings.auto_submit ? 'true' : 'false'
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    this.showToast(data.message, 'success');
+                } else {
+                    this.showToast(data.error, 'danger');
+                }
+            } catch (error) {
+                this.showToast('{% trans "Error saving settings" %}', 'danger');
+            }
+        },
+
+        async testConnection() {
+            this.testing = true;
+            this.connectionResult = null;
+
+            try {
+                const response = await fetch('{% url "verifactu:test_connection" %}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    }
+                });
+
+                this.connectionResult = await response.json();
+            } catch (error) {
+                this.connectionResult = { success: false, message: error.message };
+            } finally {
+                this.testing = false;
+            }
+        },
+
+        async verifyChain() {
+            this.verifying = true;
+            this.chainResult = null;
+
+            try {
+                const response = await fetch('{% url "verifactu:verify_chain" %}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    }
+                });
+
+                this.chainResult = await response.json();
+            } catch (error) {
+                this.chainResult = { is_valid: false, message: error.message };
+            } finally {
+                this.verifying = false;
+            }
+        },
+
+        async showToast(message, color = 'primary') {
+            const toast = document.createElement('ion-toast');
+            toast.message = message;
+            toast.duration = 2000;
+            toast.color = color;
+            toast.position = 'top';
+            document.body.appendChild(toast);
+            await toast.present();
+        }
+    }
+};
+
+document.addEventListener('htmx:afterSwap', function(event) {
+    if (event.detail.target.id === 'dashboard-content') {
+        const alpineEl = event.detail.target.querySelector('[x-data]');
+        if (alpineEl && !alpineEl._x_dataStack) {
+            Alpine.initTree(alpineEl);
+        }
+    }
+});
+</script>

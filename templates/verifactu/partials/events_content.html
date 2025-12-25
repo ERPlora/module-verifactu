@@ -1,0 +1,84 @@
+{% load static %}
+{% load i18n %}
+
+{% if request.htmx %}
+<div id="dashboard-tabbar" hx-swap-oob="innerHTML">
+<ion-footer>
+{% include "verifactu/partials/tabbar.html" with current_view='contingency' %}
+</ion-footer>
+</div>
+{% endif %}
+
+<div class="ion-padding">
+    <!-- Page Header -->
+    <div class="flex justify-between items-center mb-6">
+        <div class="flex items-center gap-4">
+            <ion-button fill="clear"
+                hx-get="{% url 'verifactu:contingency' %}"
+                hx-target="#dashboard-content"
+                hx-push-url="true">
+                <ion-icon slot="icon-only" name="arrow-back-outline"></ion-icon>
+            </ion-button>
+            <div>
+                <h1 class="text-2xl font-bold" style="color: var(--ion-text-color);">{% trans "Event Log" %}</h1>
+                <p class="text-sm mt-1" style="color: var(--ion-color-medium);">{% trans "Audit trail of all Verifactu operations" %}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter -->
+    <ion-card class="m-0 mb-4">
+        <ion-card-content>
+            <ion-item>
+                <ion-select
+                    label="{% trans 'Event Type' %}"
+                    label-placement="stacked"
+                    placeholder="{% trans 'All Types' %}"
+                    name="type"
+                    value="{{ event_type }}"
+                    hx-get="{% url 'verifactu:events' %}"
+                    hx-target="#dashboard-content"
+                    hx-trigger="ionChange">
+                    <ion-select-option value="">{% trans "All Types" %}</ion-select-option>
+                    {% for value, label in type_choices %}
+                    <ion-select-option value="{{ value }}">{{ label }}</ion-select-option>
+                    {% endfor %}
+                </ion-select>
+            </ion-item>
+        </ion-card-content>
+    </ion-card>
+
+    <!-- Events List -->
+    <ion-card class="m-0">
+        <ion-card-content class="p-0">
+            {% if events %}
+            <ion-list>
+                {% for event in events %}
+                <ion-item>
+                    <ion-icon slot="start"
+                        name="{% if event.event_type == 'error' %}alert-circle-outline{% elif event.event_type == 'alert' %}warning-outline{% elif event.event_type == 'transmission' %}send-outline{% elif event.event_type == 'generation' %}document-outline{% else %}information-circle-outline{% endif %}"
+                        color="{% if event.event_type == 'error' %}danger{% elif event.event_type == 'alert' %}warning{% elif event.event_type == 'transmission' %}success{% elif event.event_type == 'generation' %}primary{% else %}medium{% endif %}">
+                    </ion-icon>
+                    <ion-label>
+                        <h3>{{ event.description }}</h3>
+                        <p>{{ event.timestamp|date:"Y-m-d H:i:s" }}</p>
+                        {% if event.record %}
+                        <p class="text-xs">{% trans "Record" %}: {{ event.record.invoice_number }}</p>
+                        {% endif %}
+                    </ion-label>
+                    <ion-badge slot="end"
+                        color="{% if event.event_type == 'error' %}danger{% elif event.event_type == 'alert' %}warning{% elif event.event_type == 'transmission' %}success{% else %}medium{% endif %}">
+                        {{ event.event_type|title }}
+                    </ion-badge>
+                </ion-item>
+                {% endfor %}
+            </ion-list>
+            {% else %}
+            <div class="text-center py-12">
+                <ion-icon name="document-text-outline" style="font-size: 64px; color: var(--ion-color-medium);"></ion-icon>
+                <p class="mt-4" style="color: var(--ion-color-medium);">{% trans "No events found" %}</p>
+            </div>
+            {% endif %}
+        </ion-card-content>
+    </ion-card>
+</div>

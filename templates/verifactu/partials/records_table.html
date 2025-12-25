@@ -1,0 +1,65 @@
+{% load i18n %}
+
+<div class="overflow-x-auto">
+    <table class="w-full">
+        <thead>
+            <tr style="background: var(--ion-color-light);">
+                <th class="p-3 text-left text-sm font-medium">{% trans "Invoice" %}</th>
+                <th class="p-3 text-left text-sm font-medium">{% trans "Type" %}</th>
+                <th class="p-3 text-left text-sm font-medium">{% trans "Issuer" %}</th>
+                <th class="p-3 text-left text-sm font-medium">{% trans "Date" %}</th>
+                <th class="p-3 text-right text-sm font-medium">{% trans "Total" %}</th>
+                <th class="p-3 text-center text-sm font-medium">{% trans "Status" %}</th>
+                <th class="p-3 text-center text-sm font-medium">{% trans "Actions" %}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for record in records %}
+            <tr style="border-bottom: 1px solid var(--ion-border-color);">
+                <td class="p-3">
+                    <span class="font-medium">{{ record.invoice_number }}</span>
+                </td>
+                <td class="p-3">
+                    {% if record.record_type == 'alta' %}
+                    <ion-badge color="success">Alta</ion-badge>
+                    {% else %}
+                    <ion-badge color="danger">{% trans "Cancellation" %}</ion-badge>
+                    {% endif %}
+                </td>
+                <td class="p-3">
+                    <div>{{ record.issuer_name|truncatewords:3 }}</div>
+                    <div class="text-xs" style="color: var(--ion-color-medium);">{{ record.issuer_nif }}</div>
+                </td>
+                <td class="p-3">{{ record.invoice_date|date:"Y-m-d" }}</td>
+                <td class="p-3 text-right font-medium">€{{ record.total_amount }}</td>
+                <td class="p-3 text-center">
+                    {% if record.transmission_status == 'pending' %}
+                    <ion-badge color="warning">{% trans "Pending" %}</ion-badge>
+                    {% elif record.transmission_status == 'sent' %}
+                    <ion-badge color="success">{% trans "Sent" %}</ion-badge>
+                    {% elif record.transmission_status == 'error' %}
+                    <ion-badge color="danger">{% trans "Error" %}</ion-badge>
+                    {% elif record.transmission_status == 'queued' %}
+                    <ion-badge color="medium">{% trans "Queued" %}</ion-badge>
+                    {% endif %}
+                </td>
+                <td class="p-3 text-center">
+                    <ion-button size="small" fill="clear"
+                        hx-get="{% url 'verifactu:record_detail' record.id %}"
+                        hx-target="#dashboard-content"
+                        hx-push-url="true">
+                        <ion-icon slot="icon-only" name="eye-outline"></ion-icon>
+                    </ion-button>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" class="text-center py-12">
+                    <ion-icon name="document-text-outline" style="font-size: 64px; color: var(--ion-color-medium);"></ion-icon>
+                    <p class="mt-4" style="color: var(--ion-color-medium);">{% trans "No records found" %}</p>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

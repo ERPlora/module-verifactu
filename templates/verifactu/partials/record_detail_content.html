@@ -1,0 +1,235 @@
+{% load static %}
+{% load i18n %}
+
+{% if request.htmx %}
+<div id="dashboard-tabbar" hx-swap-oob="innerHTML">
+<ion-footer>
+{% include "verifactu/partials/tabbar.html" with current_view='records' %}
+</ion-footer>
+</div>
+{% endif %}
+
+<div class="ion-padding">
+    <!-- Page Header -->
+    <div class="flex justify-between items-center mb-6">
+        <div class="flex items-center gap-4">
+            <ion-button fill="clear"
+                hx-get="{% url 'verifactu:records' %}"
+                hx-target="#dashboard-content"
+                hx-push-url="true">
+                <ion-icon slot="icon-only" name="arrow-back-outline"></ion-icon>
+            </ion-button>
+            <div>
+                <h1 class="text-2xl font-bold" style="color: var(--ion-text-color);">{{ record.invoice_number }}</h1>
+                <p class="text-sm mt-1" style="color: var(--ion-color-medium);">
+                    {% if record.record_type == 'alta' %}{% trans "Registration Record" %}{% else %}{% trans "Cancellation Record" %}{% endif %}
+                </p>
+            </div>
+        </div>
+        <div>
+            {% if record.transmission_status == 'pending' %}
+            <ion-badge color="warning" style="font-size: 14px; padding: 8px 16px;">{% trans "Pending" %}</ion-badge>
+            {% elif record.transmission_status == 'sent' %}
+            <ion-badge color="success" style="font-size: 14px; padding: 8px 16px;">{% trans "Sent" %}</ion-badge>
+            {% elif record.transmission_status == 'error' %}
+            <ion-badge color="danger" style="font-size: 14px; padding: 8px 16px;">{% trans "Error" %}</ion-badge>
+            {% elif record.transmission_status == 'queued' %}
+            <ion-badge color="medium" style="font-size: 14px; padding: 8px 16px;">{% trans "Queued" %}</ion-badge>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Main Info -->
+        <div class="lg:col-span-2">
+            <!-- Invoice Details -->
+            <ion-card class="m-0 mb-4">
+                <ion-card-header>
+                    <ion-card-title>{% trans "Invoice Details" %}</ion-card-title>
+                </ion-card-header>
+                <ion-card-content>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <div class="text-xs" style="color: var(--ion-color-medium);">{% trans "Invoice Number" %}</div>
+                            <div class="font-medium">{{ record.invoice_number }}</div>
+                        </div>
+                        <div>
+                            <div class="text-xs" style="color: var(--ion-color-medium);">{% trans "Invoice Date" %}</div>
+                            <div class="font-medium">{{ record.invoice_date|date:"Y-m-d" }}</div>
+                        </div>
+                        <div>
+                            <div class="text-xs" style="color: var(--ion-color-medium);">{% trans "Invoice Type" %}</div>
+                            <div class="font-medium">{{ record.invoice_type }}</div>
+                        </div>
+                        <div>
+                            <div class="text-xs" style="color: var(--ion-color-medium);">{% trans "Record Type" %}</div>
+                            <div class="font-medium">
+                                {% if record.record_type == 'alta' %}Alta{% else %}{% trans "Cancellation" %}{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </ion-card-content>
+            </ion-card>
+
+            <!-- Issuer Info -->
+            <ion-card class="m-0 mb-4">
+                <ion-card-header>
+                    <ion-card-title>{% trans "Issuer Information" %}</ion-card-title>
+                </ion-card-header>
+                <ion-card-content>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <div class="text-xs" style="color: var(--ion-color-medium);">{% trans "Name" %}</div>
+                            <div class="font-medium">{{ record.issuer_name }}</div>
+                        </div>
+                        <div>
+                            <div class="text-xs" style="color: var(--ion-color-medium);">NIF</div>
+                            <div class="font-medium">{{ record.issuer_nif }}</div>
+                        </div>
+                    </div>
+                </ion-card-content>
+            </ion-card>
+
+            <!-- Amounts -->
+            <ion-card class="m-0 mb-4">
+                <ion-card-header>
+                    <ion-card-title>{% trans "Amounts" %}</ion-card-title>
+                </ion-card-header>
+                <ion-card-content>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div>
+                            <div class="text-xs" style="color: var(--ion-color-medium);">{% trans "Base Amount" %}</div>
+                            <div class="font-medium">€{{ record.base_amount }}</div>
+                        </div>
+                        <div>
+                            <div class="text-xs" style="color: var(--ion-color-medium);">{% trans "Tax Rate" %}</div>
+                            <div class="font-medium">{{ record.tax_rate }}%</div>
+                        </div>
+                        <div>
+                            <div class="text-xs" style="color: var(--ion-color-medium);">{% trans "Tax Amount" %}</div>
+                            <div class="font-medium">€{{ record.tax_amount }}</div>
+                        </div>
+                        <div>
+                            <div class="text-xs" style="color: var(--ion-color-medium);">{% trans "Total" %}</div>
+                            <div class="font-bold text-lg">€{{ record.total_amount }}</div>
+                        </div>
+                    </div>
+                </ion-card-content>
+            </ion-card>
+
+            <!-- Hash Chain -->
+            <ion-card class="m-0 mb-4">
+                <ion-card-header>
+                    <ion-card-title>{% trans "Hash Chain" %}</ion-card-title>
+                </ion-card-header>
+                <ion-card-content>
+                    <div class="space-y-4">
+                        <div>
+                            <div class="text-xs" style="color: var(--ion-color-medium);">{% trans "Record Hash" %}</div>
+                            <div class="font-mono text-xs break-all" style="background: var(--ion-color-light); padding: 8px; border-radius: 4px;">
+                                {{ record.record_hash }}
+                            </div>
+                        </div>
+                        {% if record.previous_hash %}
+                        <div>
+                            <div class="text-xs" style="color: var(--ion-color-medium);">{% trans "Previous Hash" %}</div>
+                            <div class="font-mono text-xs break-all" style="background: var(--ion-color-light); padding: 8px; border-radius: 4px;">
+                                {{ record.previous_hash }}
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="text-sm" style="color: var(--ion-color-medium);">
+                            <ion-icon name="flag-outline"></ion-icon>
+                            {% trans "First record in chain" %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </ion-card-content>
+            </ion-card>
+
+            <!-- Transmission Info -->
+            <ion-card class="m-0">
+                <ion-card-header>
+                    <ion-card-title>{% trans "Transmission" %}</ion-card-title>
+                </ion-card-header>
+                <ion-card-content>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <div class="text-xs" style="color: var(--ion-color-medium);">{% trans "Generated" %}</div>
+                            <div class="font-medium">{{ record.generation_timestamp|date:"Y-m-d H:i:s" }}</div>
+                        </div>
+                        {% if record.transmitted_at %}
+                        <div>
+                            <div class="text-xs" style="color: var(--ion-color-medium);">{% trans "Transmitted" %}</div>
+                            <div class="font-medium">{{ record.transmitted_at|date:"Y-m-d H:i:s" }}</div>
+                        </div>
+                        {% endif %}
+                        {% if record.csv %}
+                        <div class="col-span-2">
+                            <div class="text-xs" style="color: var(--ion-color-medium);">CSV ({% trans "Verification Code" %})</div>
+                            <div class="font-mono" style="background: var(--ion-color-light); padding: 8px; border-radius: 4px;">
+                                {{ record.csv }}
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if record.aeat_response %}
+                        <div class="col-span-2">
+                            <div class="text-xs" style="color: var(--ion-color-medium);">{% trans "AEAT Response" %}</div>
+                            <div class="text-xs font-mono" style="background: var(--ion-color-light); padding: 8px; border-radius: 4px; max-height: 200px; overflow-y: auto;">
+                                {{ record.aeat_response }}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </ion-card-content>
+            </ion-card>
+        </div>
+
+        <!-- Sidebar -->
+        <div>
+            <!-- QR Code -->
+            {% if qr_data_uri %}
+            <ion-card class="m-0 mb-4">
+                <ion-card-header>
+                    <ion-card-title>{% trans "Verification QR" %}</ion-card-title>
+                </ion-card-header>
+                <ion-card-content class="text-center">
+                    <img src="{{ qr_data_uri }}" alt="QR Code" style="max-width: 200px; margin: 0 auto;">
+                    <p class="text-xs mt-2" style="color: var(--ion-color-medium);">
+                        {% trans "Scan to verify with AEAT" %}
+                    </p>
+                </ion-card-content>
+            </ion-card>
+            {% endif %}
+
+            <!-- Events -->
+            <ion-card class="m-0">
+                <ion-card-header>
+                    <ion-card-title>{% trans "Event Log" %}</ion-card-title>
+                </ion-card-header>
+                <ion-card-content class="p-0">
+                    {% if events %}
+                    <ion-list>
+                        {% for event in events %}
+                        <ion-item>
+                            <ion-icon slot="start"
+                                name="{% if event.event_type == 'error' %}alert-circle-outline{% elif event.event_type == 'transmission' %}send-outline{% else %}information-circle-outline{% endif %}"
+                                color="{% if event.event_type == 'error' %}danger{% elif event.event_type == 'transmission' %}success{% else %}medium{% endif %}">
+                            </ion-icon>
+                            <ion-label>
+                                <p>{{ event.description|truncatewords:8 }}</p>
+                                <p class="text-xs">{{ event.timestamp|date:"Y-m-d H:i" }}</p>
+                            </ion-label>
+                        </ion-item>
+                        {% endfor %}
+                    </ion-list>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <p class="text-sm" style="color: var(--ion-color-medium);">{% trans "No events" %}</p>
+                    </div>
+                    {% endif %}
+                </ion-card-content>
+            </ion-card>
+        </div>
+    </div>
+</div>

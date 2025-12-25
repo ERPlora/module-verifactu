@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}Verifactu - {% block page_title %}Dashboard{% endblock %}{% endblock %}
+
+{% block content %}
+<ion-page>
+    <ion-content>
+        <div id="dashboard-content">
+            {% block dashboard_content %}{% endblock %}
+        </div>
+    </ion-content>
+
+    <div id="dashboard-tabbar">
+        <ion-footer>
+            {% include "verifactu/partials/tabbar.html" %}
+        </ion-footer>
+    </div>
+</ion-page>
+{% endblock %}

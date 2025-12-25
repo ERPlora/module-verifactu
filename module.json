@@ -1,0 +1,57 @@
+{
+    "module_id": "verifactu",
+    "name": "Verifactu",
+    "name_es": "Verifactu",
+    "version": "1.0.0",
+    "description": "Spanish electronic invoicing compliance (VERI*FACTU) - Real Decreto 1007/2023",
+    "description_es": "Cumplimiento normativo de facturación electrónica española (VERI*FACTU) - Real Decreto 1007/2023",
+    "author": "ERPlora",
+    "category": "compliance",
+    "icon": "shield-checkmark-outline",
+    "color": "#16a34a",
+    "min_hub_version": "1.0.0",
+    "dependencies": {
+        "modules": ["invoicing"]
+    },
+    "permissions": [
+        "verifactu.view",
+        "verifactu.manage",
+        "verifactu.configure",
+        "verifactu.transmit"
+    ],
+    "menu": {
+        "label": "Verifactu",
+        "label_es": "Verifactu",
+        "icon": "shield-checkmark-outline",
+        "url": "/modules/verifactu/",
+        "order": 35,
+        "badge": {
+            "type": "status",
+            "field": "pending_count"
+        }
+    },
+    "settings": {
+        "enabled": true,
+        "mode": "verifactu",
+        "environment": "testing",
+        "auto_transmit": true,
+        "retry_interval_minutes": 5,
+        "max_retries": 10
+    },
+    "features": [
+        "hash_chain",
+        "qr_generation",
+        "aeat_transmission",
+        "offline_mode",
+        "contingency_handling"
+    ],
+    "compliance": {
+        "regulations": [
+            "Real Decreto 1007/2023",
+            "Orden HAC/1177/2024"
+        ],
+        "deadline_software": "2025-07-29",
+        "deadline_corporate": "2027-01-01",
+        "deadline_autonomous": "2027-07-01"
+    }
+}

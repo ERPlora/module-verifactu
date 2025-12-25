@@ -1,0 +1,392 @@
+# Spanish translations for Verifactu module.
+# Copyright (C) 2025 ERPlora
+# This file is distributed under the same license as the ERPlora package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: ERPlora Verifactu 1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-12-25 00:00+0000\n"
+"PO-Revision-Date: 2025-12-25 00:00+0000\n"
+"Last-Translator: ERPlora Team\n"
+"Language-Team: Spanish\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+# VerifactuConfig model - Mode
+msgid "VERI*FACTU (Real-time transmission)"
+msgstr "VERI*FACTU (Transmisión en tiempo real)"
+
+msgid "NO VERI*FACTU (Local storage)"
+msgstr "NO VERI*FACTU (Almacenamiento local)"
+
+# VerifactuConfig model - Environment
+msgid "Production"
+msgstr "Producción"
+
+msgid "Testing (Staging)"
+msgstr "Pruebas (Staging)"
+
+# VerifactuConfig model - Fields
+msgid "Enabled"
+msgstr "Habilitado"
+
+msgid "Enable Verifactu compliance"
+msgstr "Habilitar cumplimiento Verifactu"
+
+msgid "Mode"
+msgstr "Modo"
+
+msgid "VERIFACTU mode transmits in real-time to AEAT"
+msgstr "El modo VERIFACTU transmite en tiempo real a la AEAT"
+
+msgid "Environment"
+msgstr "Entorno"
+
+msgid "Use Testing for development, Production for live data"
+msgstr "Use Pruebas para desarrollo, Producción para datos reales"
+
+msgid "Software Name"
+msgstr "Nombre del software"
+
+msgid "Name of the invoicing software"
+msgstr "Nombre del software de facturación"
+
+msgid "Software Version"
+msgstr "Versión del software"
+
+msgid "Software ID"
+msgstr "ID del software"
+
+msgid "Unique identifier for the software"
+msgstr "Identificador único del software"
+
+msgid "Software Provider NIF"
+msgstr "NIF del proveedor del software"
+
+msgid "NIF of the software provider company"
+msgstr "NIF de la empresa proveedora del software"
+
+msgid "Certificate Path"
+msgstr "Ruta del certificado"
+
+msgid "Path to PKCS#12 certificate file (.p12/.pfx)"
+msgstr "Ruta al archivo de certificado PKCS#12 (.p12/.pfx)"
+
+msgid "Certificate Password"
+msgstr "Contraseña del certificado"
+
+msgid "Encrypted password for certificate"
+msgstr "Contraseña cifrada del certificado"
+
+msgid "Certificate Expiry"
+msgstr "Caducidad del certificado"
+
+msgid "Expiration date of the certificate"
+msgstr "Fecha de expiración del certificado"
+
+msgid "Auto Transmit"
+msgstr "Transmisión automática"
+
+msgid "Automatically transmit records to AEAT"
+msgstr "Transmitir registros automáticamente a la AEAT"
+
+msgid "Retry Interval (minutes)"
+msgstr "Intervalo de reintentos (minutos)"
+
+msgid "Minutes between retry attempts"
+msgstr "Minutos entre reintentos"
+
+msgid "Max Retries"
+msgstr "Máximo de reintentos"
+
+msgid "Maximum number of retry attempts"
+msgstr "Número máximo de reintentos"
+
+msgid "Verifactu Configuration"
+msgstr "Configuración de Verifactu"
+
+# VerifactuRecord model - RecordType
+msgid "Registration (Alta)"
+msgstr "Alta"
+
+msgid "Cancellation (Anulación)"
+msgstr "Anulación"
+
+# VerifactuRecord model - InvoiceType
+msgid "F1 - Standard Invoice"
+msgstr "F1 - Factura completa"
+
+msgid "F2 - Simplified Invoice"
+msgstr "F2 - Factura simplificada"
+
+msgid "F3 - Invoice substituting simplified"
+msgstr "F3 - Factura que sustituye a simplificada"
+
+msgid "R1 - Rectifying (Art. 80.1-2)"
+msgstr "R1 - Rectificativa (Art. 80.1-2)"
+
+msgid "R2 - Rectifying (Art. 80.3)"
+msgstr "R2 - Rectificativa (Art. 80.3)"
+
+msgid "R3 - Rectifying (Art. 80.4)"
+msgstr "R3 - Rectificativa (Art. 80.4)"
+
+msgid "R4 - Rectifying (other)"
+msgstr "R4 - Rectificativa (otras)"
+
+msgid "R5 - Rectifying simplified"
+msgstr "R5 - Rectificativa simplificada"
+
+# VerifactuRecord model - TransmissionStatus
+msgid "Pending"
+msgstr "Pendiente"
+
+msgid "Transmitted"
+msgstr "Transmitido"
+
+msgid "Accepted by AEAT"
+msgstr "Aceptado por AEAT"
+
+msgid "Rejected by AEAT"
+msgstr "Rechazado por AEAT"
+
+msgid "Transmission Error"
+msgstr "Error de transmisión"
+
+msgid "Pending Retry"
+msgstr "Pendiente de reintento"
+
+# VerifactuRecord model - Fields
+msgid "Record Type"
+msgstr "Tipo de registro"
+
+msgid "Sequence Number"
+msgstr "Número de secuencia"
+
+msgid "Sequential number for hash chain ordering"
+msgstr "Número secuencial para ordenar la cadena de hash"
+
+msgid "Invoice"
+msgstr "Factura"
+
+msgid "Issuer NIF"
+msgstr "NIF del emisor"
+
+msgid "Issuer Name"
+msgstr "Nombre del emisor"
+
+msgid "Invoice Number"
+msgstr "Número de factura"
+
+msgid "Invoice Date"
+msgstr "Fecha de factura"
+
+msgid "Invoice Type"
+msgstr "Tipo de factura"
+
+msgid "Description"
+msgstr "Descripción"
+
+msgid "Base Amount"
+msgstr "Base imponible"
+
+msgid "Tax Rate"
+msgstr "Tipo de IVA"
+
+msgid "Tax Amount"
+msgstr "Cuota de IVA"
+
+msgid "Total Amount"
+msgstr "Importe total"
+
+msgid "Previous Hash"
+msgstr "Hash anterior"
+
+msgid "SHA-256 hash of previous record (empty for first record)"
+msgstr "Hash SHA-256 del registro anterior (vacío para el primer registro)"
+
+msgid "Record Hash"
+msgstr "Hash del registro"
+
+msgid "SHA-256 hash of this record"
+msgstr "Hash SHA-256 de este registro"
+
+msgid "Is First Record"
+msgstr "Es primer registro"
+
+msgid "True if this is the first record in the chain"
+msgstr "Verdadero si es el primer registro de la cadena"
+
+msgid "Generation Timestamp"
+msgstr "Fecha y hora de generación"
+
+msgid "Exact moment of record generation (with timezone)"
+msgstr "Momento exacto de generación del registro (con zona horaria)"
+
+msgid "Status"
+msgstr "Estado"
+
+msgid "Transmission Timestamp"
+msgstr "Fecha y hora de transmisión"
+
+msgid "Retry Count"
+msgstr "Número de reintentos"
+
+msgid "Next Retry At"
+msgstr "Próximo reintento"
+
+msgid "AEAT Response Code"
+msgstr "Código de respuesta AEAT"
+
+msgid "AEAT Response Message"
+msgstr "Mensaje de respuesta AEAT"
+
+msgid "AEAT CSV"
+msgstr "CSV de AEAT"
+
+msgid "Secure Verification Code from AEAT"
+msgstr "Código Seguro de Verificación de la AEAT"
+
+msgid "QR Verification URL"
+msgstr "URL de verificación QR"
+
+msgid "QR Generated"
+msgstr "QR generado"
+
+msgid "XML Content"
+msgstr "Contenido XML"
+
+msgid "Generated XML for this record"
+msgstr "XML generado para este registro"
+
+msgid "Verifactu Record"
+msgstr "Registro Verifactu"
+
+msgid "Verifactu Records"
+msgstr "Registros Verifactu"
+
+# VerifactuEvent model - EventType
+msgid "Record Created"
+msgstr "Registro creado"
+
+msgid "Transmission Attempt"
+msgstr "Intento de transmisión"
+
+msgid "Transmission Success"
+msgstr "Transmisión exitosa"
+
+msgid "Transmission Failure"
+msgstr "Fallo de transmisión"
+
+msgid "Retry Scheduled"
+msgstr "Reintento programado"
+
+msgid "Connection Error"
+msgstr "Error de conexión"
+
+msgid "AEAT Error"
+msgstr "Error de AEAT"
+
+msgid "Chain Validation"
+msgstr "Validación de cadena"
+
+msgid "Chain Error"
+msgstr "Error de cadena"
+
+msgid "Certificate Warning"
+msgstr "Aviso de certificado"
+
+msgid "Configuration Changed"
+msgstr "Configuración cambiada"
+
+msgid "Contingency Mode Started"
+msgstr "Modo contingencia iniciado"
+
+msgid "Contingency Mode Ended"
+msgstr "Modo contingencia terminado"
+
+# VerifactuEvent model - Severity
+msgid "Debug"
+msgstr "Depuración"
+
+msgid "Info"
+msgstr "Información"
+
+msgid "Warning"
+msgstr "Advertencia"
+
+msgid "Error"
+msgstr "Error"
+
+msgid "Critical"
+msgstr "Crítico"
+
+# VerifactuEvent model - Fields
+msgid "Related Record"
+msgstr "Registro relacionado"
+
+msgid "Event Type"
+msgstr "Tipo de evento"
+
+msgid "Severity"
+msgstr "Severidad"
+
+msgid "Message"
+msgstr "Mensaje"
+
+msgid "Details"
+msgstr "Detalles"
+
+msgid "Additional event details in JSON format"
+msgstr "Detalles adicionales del evento en formato JSON"
+
+msgid "Timestamp"
+msgstr "Fecha y hora"
+
+msgid "Verifactu Event"
+msgstr "Evento Verifactu"
+
+msgid "Verifactu Events"
+msgstr "Eventos Verifactu"
+
+# ContingencyQueue model - Priority
+msgid "High"
+msgstr "Alta"
+
+msgid "Normal"
+msgstr "Normal"
+
+msgid "Low"
+msgstr "Baja"
+
+# ContingencyQueue model - Fields
+msgid "Record"
+msgstr "Registro"
+
+msgid "Priority"
+msgstr "Prioridad"
+
+msgid "Queued At"
+msgstr "En cola desde"
+
+msgid "Attempts"
+msgstr "Intentos"
+
+msgid "Last Attempt At"
+msgstr "Último intento"
+
+msgid "Last Error"
+msgstr "Último error"
+
+msgid "Next Attempt At"
+msgstr "Próximo intento"
+
+msgid "Contingency Queue Entry"
+msgstr "Entrada en cola de contingencia"
+
+msgid "Contingency Queue"
+msgstr "Cola de contingencia"

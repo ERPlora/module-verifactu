@@ -33,13 +33,13 @@
                 <td class="p-3">{{ record.invoice_date|date:"Y-m-d" }}</td>
                 <td class="p-3 text-right font-medium">€{{ record.total_amount }}</td>
                 <td class="p-3 text-center">
-                    {% if record.transmission_status == 'pending' %}
+                    {% if record.status == 'pending' %}
                     <ion-badge color="warning">{% trans "Pending" %}</ion-badge>
-                    {% elif record.transmission_status == 'sent' %}
+                    {% elif record.status == 'transmitted' or record.status == 'accepted' %}
                     <ion-badge color="success">{% trans "Sent" %}</ion-badge>
-                    {% elif record.transmission_status == 'error' %}
+                    {% elif record.status == 'error' or record.status == 'rejected' %}
                     <ion-badge color="danger">{% trans "Error" %}</ion-badge>
-                    {% elif record.transmission_status == 'queued' %}
+                    {% elif record.status == 'retry' %}
                     <ion-badge color="medium">{% trans "Queued" %}</ion-badge>
                     {% endif %}
                 </td>

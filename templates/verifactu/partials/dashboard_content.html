@@ -16,6 +16,19 @@
         <p class="text-sm mt-1" style="color: var(--ion-color-medium);">{% trans "Spanish electronic invoicing compliance" %}</p>
     </div>
 
+    <!-- Demo Mode Banner -->
+    {% if demo_mode %}
+    <div class="mb-4 p-3 rounded-lg flex items-center gap-3" style="background: var(--ion-color-warning-tint);">
+        <ion-icon name="flask-outline" color="warning" style="font-size: 24px;"></ion-icon>
+        <div>
+            <span class="font-medium" style="color: var(--ion-color-warning-shade);">{% trans "Demo Mode Active" %}</span>
+            <p class="text-xs" style="color: var(--ion-color-warning-shade);">
+                {% trans "AEAT connections are simulated. Set VERIFACTU_DEMO_MODE=false to disable." %}
+            </p>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Status Banner -->
     {% if not is_configured %}
     <ion-card class="m-0 mb-4" color="warning">
@@ -42,11 +55,11 @@
         <ion-card-content class="p-4">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
-                    {% if status.mode.value == 'normal' %}
+                    {% if status.mode_value == 'normal' %}
                     <div class="w-3 h-3 rounded-full bg-success"></div>
-                    {% elif status.mode.value == 'offline' %}
+                    {% elif status.mode_value == 'offline' %}
                     <div class="w-3 h-3 rounded-full bg-danger"></div>
-                    {% elif status.mode.value == 'degraded' %}
+                    {% elif status.mode_value == 'degraded' %}
                     <div class="w-3 h-3 rounded-full bg-warning"></div>
                     {% else %}
                     <div class="w-3 h-3 rounded-full bg-primary"></div>
@@ -157,11 +170,11 @@
                         <h3>{{ record.invoice_number }}</h3>
                         <p>{{ record.generation_timestamp|date:"Y-m-d H:i" }}</p>
                     </ion-label>
-                    {% if record.transmission_status == 'sent' %}
+                    {% if record.status == 'transmitted' or record.status == 'accepted' %}
                     <ion-badge color="success" slot="end">{% trans "Sent" %}</ion-badge>
-                    {% elif record.transmission_status == 'pending' %}
+                    {% elif record.status == 'pending' %}
                     <ion-badge color="warning" slot="end">{% trans "Pending" %}</ion-badge>
-                    {% elif record.transmission_status == 'error' %}
+                    {% elif record.status == 'error' or record.status == 'rejected' %}
                     <ion-badge color="danger" slot="end">{% trans "Error" %}</ion-badge>
                     {% endif %}
                 </ion-item>

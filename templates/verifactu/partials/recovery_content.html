@@ -179,7 +179,7 @@
             <ion-card-content>
                 <p class="mb-4">{% trans "Query AEAT to get the last hash automatically. This is the safest option." %}</p>
 
-                <ion-button expand="block" @click="recoverFromAEAT()" :disabled="recovering">
+                <ion-button expand="block" @click="recoverFromAEAT()" :disabled="recovering" color="success">
                     <ion-spinner x-show="recovering" name="crescent" slot="start"></ion-spinner>
                     <ion-icon x-show="!recovering" slot="start" name="download-outline"></ion-icon>
                     {% trans "Query AEAT" %}

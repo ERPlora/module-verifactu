@@ -13,10 +13,11 @@ urlpatterns = [
 
     # Records
     path('records/', views.records_list, name='records'),
-    path('records/<int:record_id>/', views.record_detail, name='record_detail'),
+    path('records/<uuid:record_id>/', views.record_detail, name='record_detail'),
 
     # Settings
     path('settings/', views.settings_view, name='settings'),
+    path('settings/change-mode/', views.change_mode, name='change_mode'),
 
     # Contingency
     path('contingency/', views.contingency_view, name='contingency'),
@@ -37,4 +38,5 @@ urlpatterns = [
     path('api/verify-chain/', views.verify_chain, name='verify_chain'),
     path('api/test-connection/', views.test_connection, name='test_connection'),
     path('api/chain-status/', views.chain_status_api, name='chain_status'),
+    path('api/upload-certificate/', views.upload_certificate, name='upload_certificate'),
 ]

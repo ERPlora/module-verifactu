@@ -27,13 +27,13 @@
             </div>
         </div>
         <div>
-            {% if record.transmission_status == 'pending' %}
+            {% if record.status == 'pending' %}
             <ion-badge color="warning" style="font-size: 14px; padding: 8px 16px;">{% trans "Pending" %}</ion-badge>
-            {% elif record.transmission_status == 'sent' %}
+            {% elif record.status == 'transmitted' or record.status == 'accepted' %}
             <ion-badge color="success" style="font-size: 14px; padding: 8px 16px;">{% trans "Sent" %}</ion-badge>
-            {% elif record.transmission_status == 'error' %}
+            {% elif record.status == 'error' or record.status == 'rejected' %}
             <ion-badge color="danger" style="font-size: 14px; padding: 8px 16px;">{% trans "Error" %}</ion-badge>
-            {% elif record.transmission_status == 'queued' %}
+            {% elif record.status == 'retry' %}
             <ion-badge color="medium" style="font-size: 14px; padding: 8px 16px;">{% trans "Queued" %}</ion-badge>
             {% endif %}
         </div>

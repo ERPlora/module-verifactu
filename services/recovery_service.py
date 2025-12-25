@@ -140,7 +140,7 @@ class ChainRecoveryService:
         # Obtener último registro local
         local_last = VerifactuRecord.objects.filter(
             issuer_nif=issuer_nif,
-            transmission_status='sent',
+            status__in=['transmitted', 'accepted'],
         ).order_by('-sequence_number').first()
 
         local_hash = local_last.record_hash if local_last else None

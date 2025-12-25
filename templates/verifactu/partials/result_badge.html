@@ -1,0 +1,11 @@
+{% load i18n %}
+<div class="p-3 rounded-lg"
+    style="background: var(--ion-color-{% if success %}success{% else %}danger{% endif %}-tint);">
+    <div class="flex items-center gap-2">
+        <ion-icon
+            name="{% if success %}checkmark-circle{% else %}close-circle{% endif %}"
+            color="{% if success %}success{% else %}danger{% endif %}">
+        </ion-icon>
+        <span class="text-sm">{{ message }}</span>
+    </div>
+</div>

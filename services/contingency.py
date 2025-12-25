@@ -51,6 +51,16 @@ class ContingencyStatus:
     next_retry: Optional[datetime]
     can_create_records: bool
 
+    @property
+    def mode_value(self) -> str:
+        """Get mode value as string for templates."""
+        return self.mode.value
+
+    @property
+    def failure_type_value(self) -> Optional[str]:
+        """Get failure type value as string for templates."""
+        return self.failure_type.value if self.failure_type else None
+
 
 class ContingencyError(Exception):
     """Base exception for contingency errors."""
@@ -309,9 +319,9 @@ class ContingencyManager:
 
                     if response.success:
                         # Update record
-                        record.transmission_status = 'sent'
-                        record.csv = response.csv
-                        record.transmitted_at = response.timestamp
+                        record.status = 'transmitted'
+                        record.aeat_csv = response.csv
+                        record.transmission_timestamp = response.timestamp
                         record.save()
 
                         # Remove from queue
@@ -426,7 +436,7 @@ class ContingencyManager:
         logger.info("Starting hash chain verification")
 
         records = VerifactuRecord.objects.filter(
-            transmission_status='sent'
+            status__in=['transmitted', 'accepted']
         ).order_by('generation_timestamp')
 
         previous_hash = None

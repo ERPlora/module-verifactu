@@ -17,7 +17,7 @@
             <h1 class="text-2xl font-bold" style="color: var(--ion-text-color);">{% trans "Contingency Management" %}</h1>
             <p class="text-sm mt-1" style="color: var(--ion-color-medium);">{% trans "Queue management and failure recovery" %}</p>
         </div>
-        <ion-button @click="processQueue()" :disabled="processing">
+        <ion-button @click="processQueue()" :disabled="processing" color="success">
             <ion-spinner x-show="processing" name="crescent" slot="start"></ion-spinner>
             <ion-icon x-show="!processing" slot="start" name="sync-outline"></ion-icon>
             {% trans "Process Queue" %}
@@ -29,15 +29,15 @@
         <ion-card-content class="p-4">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-4">
-                    {% if status.mode.value == 'normal' %}
+                    {% if status.mode_value == 'normal' %}
                     <div class="w-12 h-12 rounded-full bg-success/20 flex items-center justify-center">
                         <ion-icon name="checkmark-circle" class="text-2xl text-success"></ion-icon>
                     </div>
-                    {% elif status.mode.value == 'offline' %}
+                    {% elif status.mode_value == 'offline' %}
                     <div class="w-12 h-12 rounded-full bg-danger/20 flex items-center justify-center">
                         <ion-icon name="cloud-offline" class="text-2xl text-danger"></ion-icon>
                     </div>
-                    {% elif status.mode.value == 'degraded' %}
+                    {% elif status.mode_value == 'degraded' %}
                     <div class="w-12 h-12 rounded-full bg-warning/20 flex items-center justify-center">
                         <ion-icon name="warning" class="text-2xl text-warning"></ion-icon>
                     </div>
@@ -49,8 +49,8 @@
                     <div>
                         <div class="text-lg font-semibold">{{ status.message }}</div>
                         <div class="text-sm" style="color: var(--ion-color-medium);">
-                            {% trans "Mode" %}: {{ status.mode.value|title }}
-                            {% if status.failure_type %} | {% trans "Failure" %}: {{ status.failure_type.value }}{% endif %}
+                            {% trans "Mode" %}: {{ status.mode_value|title }}
+                            {% if status.failure_type_value %} | {% trans "Failure" %}: {{ status.failure_type_value }}{% endif %}
                         </div>
                     </div>
                 </div>

@@ -318,7 +318,8 @@
                     <ion-item>
                         <ion-toggle
                             x-model="settings.auto_submit"
-                            :checked="settings.auto_submit">
+                            :checked="settings.auto_submit"
+                            :color="settings.auto_submit ? 'success' : 'medium'">
                             {% trans "Auto-submit to AEAT" %}
                         </ion-toggle>
                     </ion-item>
@@ -491,7 +492,158 @@
             </div>
         </ion-card-content>
     </ion-card>
+
+    <!-- Declaración Responsable -->
+    <ion-card class="m-0 mt-6">
+        <ion-card-header>
+            <ion-card-title>{% trans "Responsible Declaration" %}</ion-card-title>
+            <ion-card-subtitle>{% trans "Software certification for AEAT compliance" %}</ion-card-subtitle>
+        </ion-card-header>
+        <ion-card-content>
+            <div class="space-y-4">
+                <div class="p-4 rounded-lg border-2" style="border-color: var(--ion-color-success);">
+                    <div class="flex items-start gap-3">
+                        <ion-icon name="shield-checkmark" color="success" style="font-size: 24px; margin-top: 2px;"></ion-icon>
+                        <div>
+                            <div class="font-semibold" style="color: var(--ion-color-success);">
+                                {% trans "Certified Software" %}
+                            </div>
+                            <p class="text-sm mt-1" style="color: var(--ion-color-medium);">
+                                {% trans "ERPlora Hub complies with RD 1007/2023 and Orden HAC/1177/2024 requirements for electronic invoicing systems." %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                        <div class="text-xs font-semibold uppercase mb-1" style="color: var(--ion-color-medium);">{% trans "Software Name" %}</div>
+                        <div style="color: var(--ion-text-color);">ERPlora Hub</div>
+                    </div>
+                    <div>
+                        <div class="text-xs font-semibold uppercase mb-1" style="color: var(--ion-color-medium);">{% trans "Software ID" %}</div>
+                        <div style="color: var(--ion-text-color);">EH</div>
+                    </div>
+                    <div>
+                        <div class="text-xs font-semibold uppercase mb-1" style="color: var(--ion-color-medium);">{% trans "Version" %}</div>
+                        <div style="color: var(--ion-text-color);">{{ software_version|default:"1.0.0" }}</div>
+                    </div>
+                    <div>
+                        <div class="text-xs font-semibold uppercase mb-1" style="color: var(--ion-color-medium);">{% trans "Producer" %}</div>
+                        <div style="color: var(--ion-text-color);">ERPlora</div>
+                    </div>
+                </div>
+
+                <ion-button expand="block" fill="outline" id="open-declaration-modal">
+                    <ion-icon slot="start" name="document-text-outline"></ion-icon>
+                    {% trans "View Responsible Declaration" %}
+                </ion-button>
+
+                <div class="flex items-start gap-2 p-3 rounded-lg" style="background: var(--ion-color-step-50);">
+                    <ion-icon name="information-circle-outline" style="font-size: 18px; color: var(--ion-color-primary);"></ion-icon>
+                    <p class="text-xs" style="color: var(--ion-color-medium);">
+                        {% trans "The Responsible Declaration certifies that this software meets all legal requirements established by Spanish tax authorities (AEAT) for Verifactu compliance. This declaration is required by Article 13 of RD 1007/2023." %}
+                    </p>
+                </div>
+            </div>
+        </ion-card-content>
+    </ion-card>
 </div>
+
+<!-- Modal: Declaración Responsable -->
+<ion-modal id="declaration-modal" trigger="open-declaration-modal">
+    <ion-header>
+        <ion-toolbar>
+            <ion-title>{% trans "Responsible Declaration" %}</ion-title>
+            <ion-buttons slot="end">
+                <ion-button onclick="document.getElementById('declaration-modal').dismiss()">
+                    <ion-icon slot="icon-only" name="close"></ion-icon>
+                </ion-button>
+            </ion-buttons>
+        </ion-toolbar>
+    </ion-header>
+    <ion-content class="ion-padding">
+        <div class="declaration-content" style="font-family: monospace; font-size: 12px; line-height: 1.6;">
+            <div class="text-center mb-6 pb-4" style="border-bottom: 2px solid var(--ion-border-color);">
+                <h2 class="text-lg font-bold mb-2">{% trans "RESPONSIBLE DECLARATION" %}</h2>
+                <h3 class="text-sm" style="color: var(--ion-color-medium);">{% trans "INVOICING INFORMATION SYSTEM" %}</h3>
+                <p class="text-xs mt-2" style="color: var(--ion-color-medium);">
+                    {% trans "In accordance with Article 13 of Royal Decree 1007/2023" %}
+                </p>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <h4 class="font-bold mb-2" style="color: var(--ion-color-primary);">1. {% trans "SYSTEM INFORMATION" %}</h4>
+                    <table class="w-full text-sm">
+                        <tr><td class="py-1" style="color: var(--ion-color-medium);">{% trans "System Name" %}:</td><td class="py-1 font-semibold">ERPlora Hub</td></tr>
+                        <tr><td class="py-1" style="color: var(--ion-color-medium);">{% trans "Identifier Code" %}:</td><td class="py-1 font-semibold">EH</td></tr>
+                        <tr><td class="py-1" style="color: var(--ion-color-medium);">{% trans "Version" %}:</td><td class="py-1 font-semibold">{{ software_version|default:"1.0.0" }}</td></tr>
+                    </table>
+                    <p class="mt-2 text-xs" style="color: var(--ion-color-medium);">
+                        {% trans "Modular business management system (ERP) with point of sale (POS) and electronic invoicing capabilities. Includes Verifactu module for Spanish invoicing compliance (RD 1007/2023)." %}
+                    </p>
+                </div>
+
+                <div>
+                    <h4 class="font-bold mb-2" style="color: var(--ion-color-primary);">2. {% trans "TECHNICAL FEATURES" %}</h4>
+                    <ul class="text-xs space-y-1" style="color: var(--ion-color-medium);">
+                        <li>✓ {% trans "Generation of invoicing records (registration and cancellation)" %}</li>
+                        <li>✓ {% trans "SHA-256 hash chaining" %}</li>
+                        <li>✓ {% trans "Verifiable QR code generation" %}</li>
+                        <li>✓ {% trans "Automatic transmission to AEAT (VERI*FACTU mode)" %}</li>
+                        <li>✓ {% trans "Secure local storage (NO VERI*FACTU mode)" %}</li>
+                        <li>✓ {% trans "Event logging with guaranteed integrity" %}</li>
+                        <li>✓ {% trans "Contingency management and retries" %}</li>
+                        <li>✓ {% trans "Record export in XML format" %}</li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 class="font-bold mb-2" style="color: var(--ion-color-primary);">3. {% trans "PRODUCER INFORMATION" %}</h4>
+                    <table class="w-full text-sm">
+                        <tr><td class="py-1" style="color: var(--ion-color-medium);">{% trans "Company" %}:</td><td class="py-1 font-semibold">ERPlora</td></tr>
+                        <tr><td class="py-1" style="color: var(--ion-color-medium);">{% trans "Contact" %}:</td><td class="py-1 font-semibold">support@erplora.com</td></tr>
+                        <tr><td class="py-1" style="color: var(--ion-color-medium);">{% trans "Website" %}:</td><td class="py-1 font-semibold">https://erplora.com</td></tr>
+                    </table>
+                </div>
+
+                <div>
+                    <h4 class="font-bold mb-2" style="color: var(--ion-color-primary);">4. {% trans "DECLARATION" %}</h4>
+                    <p class="text-xs" style="color: var(--ion-color-medium);">
+                        {% trans "The undersigned producer RESPONSIBLY DECLARES that the Invoicing Information System identified above:" %}
+                    </p>
+                    <ul class="text-xs space-y-1 mt-2" style="color: var(--ion-color-medium);">
+                        <li>a) {% trans "Complies with Article 29.2.j) of Law 58/2003 (General Tax Law)." %}</li>
+                        <li>b) {% trans "Complies with Royal Decree 1007/2023 requirements for invoicing systems." %}</li>
+                        <li>c) {% trans "Complies with technical specifications in Order HAC/1177/2024." %}</li>
+                        <li>d) {% trans "Guarantees integrity, conservation, accessibility, readability, traceability and unalterability of invoicing records." %}</li>
+                        <li>e) {% trans "Does not allow alteration of invoicing records once generated." %}</li>
+                        <li>f) {% trans "Allows Tax Administration access to invoicing records." %}</li>
+                    </ul>
+                </div>
+
+                <div class="mt-6 pt-4" style="border-top: 1px solid var(--ion-border-color);">
+                    <p class="text-xs" style="color: var(--ion-color-medium);">
+                        {% trans "This responsible declaration is valid for the indicated software version. Any update affecting invoicing functionalities will require a new declaration." %}
+                    </p>
+                </div>
+            </div>
+
+            <div class="mt-6 p-4 rounded-lg text-center" style="background: var(--ion-color-step-50);">
+                <p class="text-xs" style="color: var(--ion-color-medium);">
+                    {% trans "Document generated in accordance with examples published by the Spanish Tax Agency (AEAT)" %}
+                </p>
+                <a href="https://sede.agenciatributaria.gob.es/Sede/iva/sistemas-informaticos-facturacion-verifactu.html"
+                   target="_blank"
+                   class="text-xs"
+                   style="color: var(--ion-color-primary);">
+                    sede.agenciatributaria.gob.es
+                </a>
+            </div>
+        </div>
+    </ion-content>
+</ion-modal>
 
 <style>
 /* HTMX indicator styles */

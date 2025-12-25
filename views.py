@@ -6,6 +6,7 @@ Spanish electronic invoicing compliance (VERI*FACTU).
 import os
 import json
 from datetime import timedelta
+from pathlib import Path
 
 from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse
@@ -205,6 +206,16 @@ def settings_view(request):
     # Get mode lock info
     mode_lock_info = config.get_mode_lock_info() if config else {'locked': False, 'can_change': True}
 
+    # Get software version from module.json
+    module_json_path = Path(__file__).parent / 'module.json'
+    software_version = '1.0.0'
+    try:
+        with open(module_json_path) as f:
+            module_data = json.load(f)
+            software_version = module_data.get('version', '1.0.0')
+    except Exception:
+        pass
+
     context = {
         'config': config,
         'environments': [
@@ -214,6 +225,7 @@ def settings_view(request):
         'demo_mode': demo_mode,
         'mode_lock_info': mode_lock_info,
         'modes': VerifactuConfig.Mode.choices,
+        'software_version': software_version,
     }
 
     if request.headers.get('HX-Request'):

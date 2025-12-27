@@ -16,6 +16,15 @@ from django.utils import timezone
 from django.db.models import Count, Q
 from django.conf import settings
 
+# Import htmx_view decorator from hub core
+import sys
+from pathlib import Path as PathLib
+hub_path = PathLib(__file__).parent.parent.parent / 'hub'
+if str(hub_path) not in sys.path:
+    sys.path.insert(0, str(hub_path))
+
+from apps.core.htmx import htmx_view
+
 from .models import VerifactuConfig, VerifactuRecord, VerifactuEvent, ContingencyQueue
 from .services import ContingencyManager
 from .services.contingency import get_contingency_manager
@@ -28,6 +37,7 @@ def is_demo_mode():
 
 @require_http_methods(["GET"])
 @login_required
+@htmx_view('verifactu/dashboard.html', 'verifactu/partials/dashboard_content.html')
 def dashboard(request):
     """
     Verifactu dashboard - main entry point.
@@ -67,7 +77,7 @@ def dashboard(request):
 
     demo_mode = is_demo_mode()
 
-    context = {
+    return {
         'config': config,
         'status': status,
         'total_records': total_records,
@@ -81,13 +91,10 @@ def dashboard(request):
         'demo_mode': demo_mode,
     }
 
-    if request.headers.get('HX-Request'):
-        return render(request, 'verifactu/partials/dashboard_content.html', context)
-    return render(request, 'verifactu/dashboard.html', context)
-
 
 @require_http_methods(["GET"])
 @login_required
+@htmx_view('verifactu/records.html', 'verifactu/partials/records_content.html')
 def records_list(request):
     """
     List all Verifactu records with filtering.
@@ -111,7 +118,18 @@ def records_list(request):
     if record_type:
         records = records.filter(record_type=record_type)
 
-    context = {
+    # Handle HX-Target for table refresh (special case)
+    if request.headers.get('HX-Target') == 'records-table-container':
+        return render(request, 'verifactu/partials/records_table.html', {
+            'records': records[:100],
+            'search': search,
+            'status_filter': status_filter,
+            'record_type': record_type,
+            'status_choices': VerifactuRecord.TransmissionStatus.choices,
+            'type_choices': VerifactuRecord.RecordType.choices,
+        })
+
+    return {
         'records': records[:100],
         'search': search,
         'status_filter': status_filter,
@@ -120,16 +138,10 @@ def records_list(request):
         'type_choices': VerifactuRecord.RecordType.choices,
     }
 
-    if request.headers.get('HX-Target') == 'records-table-container':
-        return render(request, 'verifactu/partials/records_table.html', context)
-
-    if request.headers.get('HX-Request'):
-        return render(request, 'verifactu/partials/records_content.html', context)
-    return render(request, 'verifactu/records.html', context)
-
 
 @require_http_methods(["GET"])
 @login_required
+@htmx_view('verifactu/record_detail.html', 'verifactu/partials/record_detail_content.html')
 def record_detail(request, record_id):
     """
     View details of a specific Verifactu record.
@@ -148,19 +160,16 @@ def record_detail(request, record_id):
     except Exception:
         pass
 
-    context = {
+    return {
         'record': record,
         'events': events,
         'qr_data_uri': qr_data_uri,
     }
 
-    if request.headers.get('HX-Request'):
-        return render(request, 'verifactu/partials/record_detail_content.html', context)
-    return render(request, 'verifactu/record_detail.html', context)
-
 
 @require_http_methods(["GET", "POST"])
 @login_required
+@htmx_view('verifactu/settings.html', 'verifactu/partials/settings_content.html')
 def settings_view(request):
     """
     Verifactu configuration settings.
@@ -216,7 +225,7 @@ def settings_view(request):
     except Exception:
         pass
 
-    context = {
+    return {
         'config': config,
         'environments': [
             ('testing', 'Pruebas (AEAT Test)'),
@@ -227,10 +236,6 @@ def settings_view(request):
         'modes': VerifactuConfig.Mode.choices,
         'software_version': software_version,
     }
-
-    if request.headers.get('HX-Request'):
-        return render(request, 'verifactu/partials/settings_content.html', context)
-    return render(request, 'verifactu/settings.html', context)
 
 
 @require_http_methods(["POST"])
@@ -398,6 +403,7 @@ def upload_certificate(request):
 
 @require_http_methods(["GET"])
 @login_required
+@htmx_view('verifactu/contingency.html', 'verifactu/partials/contingency_content.html')
 def contingency_view(request):
     """
     Contingency management and queue status.
@@ -418,16 +424,12 @@ def contingency_view(request):
     # Recent events
     events = VerifactuEvent.objects.order_by('-timestamp')[:20]
 
-    context = {
+    return {
         'status': status,
         'queued': queued,
         'failed': failed,
         'events': events,
     }
-
-    if request.headers.get('HX-Request'):
-        return render(request, 'verifactu/partials/contingency_content.html', context)
-    return render(request, 'verifactu/contingency.html', context)
 
 
 @require_http_methods(["POST"])
@@ -571,6 +573,7 @@ def health_check(request):
 
 @require_http_methods(["GET"])
 @login_required
+@htmx_view('verifactu/events.html', 'verifactu/partials/events_content.html')
 def events_list(request):
     """
     List all Verifactu events/audit log.
@@ -582,15 +585,11 @@ def events_list(request):
     if event_type:
         events = events.filter(event_type=event_type)
 
-    context = {
+    return {
         'events': events[:100],
         'event_type': event_type,
         'type_choices': VerifactuEvent.TYPE_CHOICES,
     }
-
-    if request.headers.get('HX-Request'):
-        return render(request, 'verifactu/partials/events_content.html', context)
-    return render(request, 'verifactu/events.html', context)
 
 
 @require_http_methods(["POST"])
@@ -641,6 +640,7 @@ def cancel_queue_entry(request, queue_id):
 
 @require_http_methods(["GET"])
 @login_required
+@htmx_view('verifactu/recovery.html', 'verifactu/partials/recovery_content.html')
 def chain_recovery_view(request):
     """
     Vista de recuperación de cadena hash.
@@ -665,15 +665,11 @@ def chain_recovery_view(request):
         except Exception as e:
             chain_status = None
 
-    context = {
+    return {
         'config': config,
         'issuer_nif': issuer_nif,
         'chain_status': chain_status,
     }
-
-    if request.headers.get('HX-Request'):
-        return render(request, 'verifactu/partials/recovery_content.html', context)
-    return render(request, 'verifactu/recovery.html', context)
 
 
 @require_http_methods(["POST"])

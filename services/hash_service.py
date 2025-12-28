@@ -222,23 +222,63 @@ class HashService:
         return True, None
 
     @classmethod
-    def get_last_hash(cls, issuer_nif: str) -> str:
+    def get_last_hash(cls, issuer_nif: str, check_aeat_recovery: bool = True) -> str:
         """
         Get the hash of the last record for an issuer.
 
+        If local records exist, returns the last local hash.
+        If no local records but AEAT has records (recovery scenario),
+        attempts to get the last hash from AEAT.
+
         Args:
             issuer_nif: NIF of the issuer
+            check_aeat_recovery: If True, check AEAT when local is empty
 
         Returns:
             Hash of the last record, or empty string if no records exist
         """
-        from verifactu.models import VerifactuRecord
+        from verifactu.models import VerifactuRecord, VerifactuConfig
 
         last_record = VerifactuRecord.objects.filter(
             issuer_nif=issuer_nif
         ).order_by('-sequence_number').first()
 
-        return last_record.record_hash if last_record else ""
+        if last_record:
+            return last_record.record_hash
+
+        # No local records - check if we should recover from AEAT
+        if not check_aeat_recovery:
+            return ""
+
+        # Check if certificate is configured and we can query AEAT
+        config = VerifactuConfig.get_config()
+        if not config.certificate_path or not config.certificate_password:
+            return ""
+
+        # Attempt to get last hash from AEAT (recovery scenario)
+        try:
+            from verifactu.services.reconciliation_service import ReconciliationService
+
+            service = ReconciliationService()
+            aeat_hash = service.get_aeat_last_hash(issuer_nif)
+
+            if aeat_hash:
+                from verifactu.models import VerifactuEvent
+                VerifactuEvent.log(
+                    event_type=VerifactuEvent.EventType.CHAIN_VALIDATION,
+                    message=f"Usando hash de AEAT para continuar cadena: {aeat_hash[:16]}...",
+                    severity='info',
+                    issuer_nif=issuer_nif,
+                    aeat_hash=aeat_hash,
+                )
+                return aeat_hash
+
+        except Exception as e:
+            import logging
+            logger = logging.getLogger('verifactu.hash_service')
+            logger.warning(f"Could not get AEAT hash for recovery: {e}")
+
+        return ""
 
     @classmethod
     def get_next_sequence_number(cls, issuer_nif: str) -> int:

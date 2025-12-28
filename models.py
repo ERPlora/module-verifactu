@@ -162,6 +162,25 @@ class VerifactuConfig(TimeStampedModel):
         help_text=_('Date of first Verifactu record - audit trail')
     )
 
+    # Reconciliation Status (updated when certificate is configured)
+    last_reconciliation_at = models.DateTimeField(
+        _('Last Reconciliation'),
+        null=True,
+        blank=True,
+        help_text=_('When the last reconciliation with AEAT was performed')
+    )
+    last_reconciliation_status = models.CharField(
+        _('Reconciliation Status'),
+        max_length=30,
+        blank=True,
+        help_text=_('Status of last reconciliation: success, mismatch_detected, failed, etc.')
+    )
+    last_reconciliation_message = models.TextField(
+        _('Reconciliation Message'),
+        blank=True,
+        help_text=_('Detailed message from last reconciliation')
+    )
+
     # Note: created_at and updated_at inherited from TimeStampedModel
 
     class Meta(TimeStampedModel.Meta):

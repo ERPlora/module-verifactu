@@ -7,5 +7,5 @@ class VerifactuConfig(AppConfig):
     verbose_name = 'Verifactu'
 
     def ready(self):
-        # Import signals if needed
-        pass
+        # Import signals to register them
+        from verifactu import signals  # noqa: F401

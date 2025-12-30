@@ -1,9 +1,7 @@
 {% load static i18n ui %}
 
 {% if request.htmx %}
-<ion-footer id="dashboard-tabbar" hx-swap-oob="outerHTML">
-{% include "verifactu/partials/tabbar.html" with current_view='records' %}
-</ion-footer>
+{% include "verifactu/partials/tabbar.html" with current_view='records' oob=True %}
 {% endif %}
 
 {% if record.record_type == 'alta' %}

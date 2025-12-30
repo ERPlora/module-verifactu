@@ -1,6 +1,7 @@
 {% load i18n ui %}
 
 {% with cv=current_view|default:"dashboard" %}
+<ion-footer id="dashboard-tabbar"{% if oob %} hx-swap-oob="outerHTML"{% endif %}>
 <ion-tab-bar>
     {% url 'verifactu:dashboard' as dashboard_url %}
     {% url 'verifactu:records' as records_url %}
@@ -43,4 +44,5 @@
         <ion-label>{% trans "Settings" %}</ion-label>
     </ion-tab-button>
 </ion-tab-bar>
+</ion-footer>
 {% endwith %}

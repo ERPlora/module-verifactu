@@ -1,9 +1,7 @@
 {% load i18n ui %}
 
 {% if request.htmx %}
-<ion-footer id="dashboard-tabbar" hx-swap-oob="outerHTML">
-{% include "verifactu/partials/tabbar.html" with current_view='dashboard' %}
-</ion-footer>
+{% include "verifactu/partials/tabbar.html" with current_view='dashboard' oob=True %}
 {% endif %}
 
 {% ui_page_header title="Verifactu" subtitle=_("Spanish electronic invoicing compliance") %}

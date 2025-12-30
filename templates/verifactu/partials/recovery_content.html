@@ -1,9 +1,7 @@
 {% load static i18n ui %}
 
 {% if request.htmx %}
-<ion-footer id="dashboard-tabbar" hx-swap-oob="outerHTML">
-{% include "verifactu/partials/tabbar.html" with current_view='contingency' %}
-</ion-footer>
+{% include "verifactu/partials/tabbar.html" with current_view='contingency' oob=True %}
 {% endif %}
 
 {% ui_page_header title=_("Chain Recovery") subtitle=_("Recover hash chain after database restore or migration") %}

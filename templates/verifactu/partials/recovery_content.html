@@ -1,30 +1,15 @@
-{% load static %}
-{% load i18n %}
+{% load static i18n ui %}
 
 {% if request.htmx %}
-<div id="dashboard-tabbar" hx-swap-oob="innerHTML">
-<ion-footer>
+<ion-footer id="dashboard-tabbar" hx-swap-oob="outerHTML">
 {% include "verifactu/partials/tabbar.html" with current_view='contingency' %}
 </ion-footer>
-</div>
 {% endif %}
+
+{% ui_page_header title=_("Chain Recovery") subtitle=_("Recover hash chain after database restore or migration") %}
 
 {% csrf_token %}
 <div x-data="recoveryApp()" class="ion-padding">
-    <!-- Page Header -->
-    <div class="flex justify-between items-center mb-6">
-        <div>
-            <h1 class="text-2xl font-bold" style="color: var(--ion-text-color);">{% trans "Chain Recovery" %}</h1>
-            <p class="text-sm mt-1" style="color: var(--ion-color-medium);">{% trans "Recover hash chain after database restore or migration" %}</p>
-        </div>
-        <ion-button fill="outline"
-            hx-get="{% url 'verifactu:contingency' %}"
-            hx-target="#dashboard-content"
-            hx-push-url="true">
-            <ion-icon slot="start" name="arrow-back-outline"></ion-icon>
-            {% trans "Back to Contingency" %}
-        </ion-button>
-    </div>
 
     <!-- Explanation Card -->
     <ion-card class="m-0 mb-6">
@@ -380,7 +365,8 @@ window.recoveryApp = function() {
     }
 };
 
-document.addEventListener('htmx:afterSwap', function(event) {
+// Using 'afterSettle' to ensure scripts have executed before Alpine init
+document.addEventListener('htmx:afterSettle', function(event) {
     if (event.detail.target.id === 'dashboard-content') {
         const alpineEl = event.detail.target.querySelector('[x-data]');
         if (alpineEl && !alpineEl._x_dataStack) {

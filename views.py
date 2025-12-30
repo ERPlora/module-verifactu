@@ -37,7 +37,7 @@ def is_demo_mode():
 
 @require_http_methods(["GET"])
 @login_required
-@htmx_view('verifactu/dashboard.html', 'verifactu/partials/dashboard_content.html')
+@htmx_view('verifactu/pages/dashboard.html', 'verifactu/partials/dashboard_content.html')
 def dashboard(request):
     """
     Verifactu dashboard - main entry point.
@@ -94,7 +94,7 @@ def dashboard(request):
 
 @require_http_methods(["GET"])
 @login_required
-@htmx_view('verifactu/records.html', 'verifactu/partials/records_content.html')
+@htmx_view('verifactu/pages/records.html', 'verifactu/partials/records_content.html')
 def records_list(request):
     """
     List all Verifactu records with filtering.
@@ -141,7 +141,7 @@ def records_list(request):
 
 @require_http_methods(["GET"])
 @login_required
-@htmx_view('verifactu/record_detail.html', 'verifactu/partials/record_detail_content.html')
+@htmx_view('verifactu/pages/record_detail.html', 'verifactu/partials/record_detail_content.html')
 def record_detail(request, record_id):
     """
     View details of a specific Verifactu record.
@@ -169,7 +169,7 @@ def record_detail(request, record_id):
 
 @require_http_methods(["GET", "POST"])
 @login_required
-@htmx_view('verifactu/settings.html', 'verifactu/partials/settings_content.html')
+@htmx_view('verifactu/pages/settings.html', 'verifactu/partials/settings_content.html')
 def settings_view(request):
     """
     Verifactu configuration settings.
@@ -244,21 +244,30 @@ def change_mode(request):
     """
     Change Verifactu operating mode (VERI*FACTU or NO VERI*FACTU).
     Only allowed if mode is not locked for current fiscal year.
+    For HTMX requests, redirects back to settings page.
     """
     config = VerifactuConfig.get_config()
 
     if not config.can_change_mode():
+        if request.headers.get('HX-Request'):
+            return render(request, 'verifactu/partials/result_badge.html', {
+                'success': False,
+                'message': 'El modo está bloqueado para este año fiscal.',
+            })
         return JsonResponse({
             'success': False,
-            'error': 'El modo está bloqueado para este año fiscal. '
-                     'Una vez creada la primera factura o ticket, el modo no puede cambiar hasta el próximo año.',
+            'error': 'El modo está bloqueado para este año fiscal.',
         }, status=403)
 
     try:
-        data = json.loads(request.body) if request.content_type == 'application/json' else request.POST
-        new_mode = data.get('mode', '')
+        new_mode = request.POST.get('mode', '')
 
         if new_mode not in [VerifactuConfig.Mode.VERIFACTU, VerifactuConfig.Mode.NO_VERIFACTU]:
+            if request.headers.get('HX-Request'):
+                return render(request, 'verifactu/partials/result_badge.html', {
+                    'success': False,
+                    'message': 'Modo inválido',
+                })
             return JsonResponse({
                 'success': False,
                 'error': 'Modo inválido',
@@ -276,6 +285,10 @@ def change_mode(request):
             details={'old_mode': old_mode, 'new_mode': new_mode}
         )
 
+        # For HTMX, return full settings page to refresh the view
+        if request.headers.get('HX-Request'):
+            return settings_view(request)
+
         return JsonResponse({
             'success': True,
             'message': f'Modo cambiado a {config.get_mode_display()}',
@@ -284,6 +297,11 @@ def change_mode(request):
         })
 
     except Exception as e:
+        if request.headers.get('HX-Request'):
+            return render(request, 'verifactu/partials/result_badge.html', {
+                'success': False,
+                'message': str(e),
+            })
         return JsonResponse({
             'success': False,
             'error': str(e),
@@ -292,12 +310,79 @@ def change_mode(request):
 
 @require_http_methods(["POST"])
 @login_required
+def save_software_settings(request):
+    """
+    Save software information settings via HTMX form.
+    Returns toast notification.
+    """
+    config = VerifactuConfig.get_config()
+    if config is None:
+        config = VerifactuConfig()
+
+    try:
+        config.software_name = request.POST.get('software_name', config.software_name)
+        config.software_id = request.POST.get('software_id', config.software_id)
+        config.software_version = request.POST.get('software_version', config.software_version)
+        config.software_nif = request.POST.get('software_nif', config.software_nif)
+        config.save()
+
+        return render(request, 'verifactu/partials/toast_response.html', {
+            'success': True,
+            'message': 'Configuración de software guardada correctamente',
+        })
+
+    except Exception as e:
+        return render(request, 'verifactu/partials/toast_response.html', {
+            'success': False,
+            'message': str(e),
+        })
+
+
+@require_http_methods(["POST"])
+@login_required
+def save_connection_settings(request):
+    """
+    Save AEAT connection settings via HTMX form.
+    Returns toast notification.
+    """
+    config = VerifactuConfig.get_config()
+    if config is None:
+        config = VerifactuConfig()
+
+    try:
+        config.environment = request.POST.get('environment', config.environment)
+        # ion-toggle sends 'true' when checked, nothing when unchecked
+        config.auto_submit = request.POST.get('auto_submit') == 'true'
+        config.save()
+
+        return render(request, 'verifactu/partials/toast_response.html', {
+            'success': True,
+            'message': 'Configuración de conexión guardada correctamente',
+        })
+
+    except Exception as e:
+        return render(request, 'verifactu/partials/toast_response.html', {
+            'success': False,
+            'message': str(e),
+        })
+
+
+@require_http_methods(["POST"])
+@login_required
 def upload_certificate(request):
     """
     Upload and save a PKCS#12 certificate file.
     The certificate is saved in MEDIA_ROOT/verifactu/certificates/
+    For HTMX requests, returns toast notification.
     """
+    is_htmx = request.headers.get('HX-Request')
+
     if 'certificate' not in request.FILES:
+        if is_htmx:
+            return render(request, 'verifactu/partials/toast_response.html', {
+                'success': False,
+                'message': 'No se ha proporcionado ningún archivo',
+            })
         return JsonResponse({
             'success': False,
             'error': 'No se ha proporcionado ningún archivo',
@@ -308,6 +393,11 @@ def upload_certificate(request):
 
     # Validate file extension
     if not certificate_file.name.lower().endswith(('.p12', '.pfx')):
+        if is_htmx:
+            return render(request, 'verifactu/partials/toast_response.html', {
+                'success': False,
+                'message': 'El archivo debe ser un certificado PKCS#12 (.p12 o .pfx)',
+            })
         return JsonResponse({
             'success': False,
             'error': 'El archivo debe ser un certificado PKCS#12 (.p12 o .pfx)',
@@ -344,6 +434,11 @@ def upload_certificate(request):
 
             if certificate is None:
                 os.remove(filepath)
+                if is_htmx:
+                    return render(request, 'verifactu/partials/toast_response.html', {
+                        'success': False,
+                        'message': 'No se pudo leer el certificado. Verifica la contraseña.',
+                    })
                 return JsonResponse({
                     'success': False,
                     'error': 'No se pudo leer el certificado. Verifica la contraseña.',
@@ -362,6 +457,11 @@ def upload_certificate(request):
 
         except Exception as e:
             os.remove(filepath)
+            if is_htmx:
+                return render(request, 'verifactu/partials/toast_response.html', {
+                    'success': False,
+                    'message': f'Error al validar el certificado: {str(e)}',
+                })
             return JsonResponse({
                 'success': False,
                 'error': f'Error al validar el certificado: {str(e)}',
@@ -383,6 +483,11 @@ def upload_certificate(request):
             details={'subject': subject, 'expiry': str(expiry_date) if expiry_date else None}
         )
 
+        if is_htmx:
+            return render(request, 'verifactu/partials/toast_response.html', {
+                'success': True,
+                'message': f'Certificado cargado correctamente. Expira: {expiry_date}' if expiry_date else 'Certificado cargado correctamente',
+            })
         return JsonResponse({
             'success': True,
             'message': 'Certificado cargado correctamente',
@@ -395,6 +500,11 @@ def upload_certificate(request):
         # Clean up on error
         if os.path.exists(filepath):
             os.remove(filepath)
+        if is_htmx:
+            return render(request, 'verifactu/partials/toast_response.html', {
+                'success': False,
+                'message': f'Error al guardar el certificado: {str(e)}',
+            })
         return JsonResponse({
             'success': False,
             'error': f'Error al guardar el certificado: {str(e)}',
@@ -403,7 +513,7 @@ def upload_certificate(request):
 
 @require_http_methods(["GET"])
 @login_required
-@htmx_view('verifactu/contingency.html', 'verifactu/partials/contingency_content.html')
+@htmx_view('verifactu/pages/contingency.html', 'verifactu/partials/contingency_content.html')
 def contingency_view(request):
     """
     Contingency management and queue status.
@@ -573,7 +683,7 @@ def health_check(request):
 
 @require_http_methods(["GET"])
 @login_required
-@htmx_view('verifactu/events.html', 'verifactu/partials/events_content.html')
+@htmx_view('verifactu/pages/events.html', 'verifactu/partials/events_content.html')
 def events_list(request):
     """
     List all Verifactu events/audit log.
@@ -640,7 +750,7 @@ def cancel_queue_entry(request, queue_id):
 
 @require_http_methods(["GET"])
 @login_required
-@htmx_view('verifactu/recovery.html', 'verifactu/partials/recovery_content.html')
+@htmx_view('verifactu/pages/recovery.html', 'verifactu/partials/recovery_content.html')
 def chain_recovery_view(request):
     """
     Vista de recuperación de cadena hash.

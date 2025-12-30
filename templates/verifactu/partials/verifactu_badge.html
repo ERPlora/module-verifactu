@@ -1,0 +1,21 @@
+{% comment %}
+Verifactu Badge for Invoice Header
+Injected via slot: invoicing.header
+
+Context:
+- verifactu_enabled: bool
+- verifactu_mode: Display text for current mode
+- show_badge: True if badge should be shown
+{% endcomment %}
+
+{% if show_badge %}
+<div class="verifactu-badge" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; background: #e8f5e9; border-radius: 4px; font-size: 11px; color: #2e7d32;">
+    <ion-icon name="shield-checkmark-outline" style="font-size: 14px;"></ion-icon>
+    <span>VERI*FACTU</span>
+</div>
+{% elif verifactu_enabled %}
+<div class="verifactu-badge" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; background: #fff8e1; border-radius: 4px; font-size: 11px; color: #f57c00;">
+    <ion-icon name="document-outline" style="font-size: 14px;"></ion-icon>
+    <span>NO VERI*FACTU</span>
+</div>
+{% endif %}

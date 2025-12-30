@@ -1,22 +1,14 @@
-{% load static %}
-{% load i18n %}
+{% load static i18n ui %}
 
 {% if request.htmx %}
-<div id="dashboard-tabbar" hx-swap-oob="innerHTML">
-<ion-footer>
+<ion-footer id="dashboard-tabbar" hx-swap-oob="outerHTML">
 {% include "verifactu/partials/tabbar.html" with current_view='records' %}
 </ion-footer>
-</div>
 {% endif %}
 
+{% ui_page_header title=_("Verifactu Records") subtitle=_("All invoice records submitted to AEAT") %}
+
 <div class="ion-padding">
-    <!-- Page Header -->
-    <div class="flex justify-between items-center mb-6">
-        <div>
-            <h1 class="text-2xl font-bold" style="color: var(--ion-text-color);">{% trans "Verifactu Records" %}</h1>
-            <p class="text-sm mt-1" style="color: var(--ion-color-medium);">{% trans "All invoice records submitted to AEAT" %}</p>
-        </div>
-    </div>
 
     <!-- Filters -->
     <ion-card class="m-0 mb-4">

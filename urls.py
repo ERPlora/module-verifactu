@@ -18,6 +18,8 @@ urlpatterns = [
     # Settings
     path('settings/', views.settings_view, name='settings'),
     path('settings/change-mode/', views.change_mode, name='change_mode'),
+    path('settings/save-software/', views.save_software_settings, name='save_software_settings'),
+    path('settings/save-connection/', views.save_connection_settings, name='save_connection_settings'),
 
     # Contingency
     path('contingency/', views.contingency_view, name='contingency'),

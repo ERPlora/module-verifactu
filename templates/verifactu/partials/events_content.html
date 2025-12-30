@@ -1,30 +1,14 @@
-{% load static %}
-{% load i18n %}
+{% load static i18n ui %}
 
 {% if request.htmx %}
-<div id="dashboard-tabbar" hx-swap-oob="innerHTML">
-<ion-footer>
+<ion-footer id="dashboard-tabbar" hx-swap-oob="outerHTML">
 {% include "verifactu/partials/tabbar.html" with current_view='contingency' %}
 </ion-footer>
-</div>
 {% endif %}
 
+{% ui_page_header title=_("Event Log") subtitle=_("Audit trail of all Verifactu operations") %}
+
 <div class="ion-padding">
-    <!-- Page Header -->
-    <div class="flex justify-between items-center mb-6">
-        <div class="flex items-center gap-4">
-            <ion-button fill="clear"
-                hx-get="{% url 'verifactu:contingency' %}"
-                hx-target="#dashboard-content"
-                hx-push-url="true">
-                <ion-icon slot="icon-only" name="arrow-back-outline"></ion-icon>
-            </ion-button>
-            <div>
-                <h1 class="text-2xl font-bold" style="color: var(--ion-text-color);">{% trans "Event Log" %}</h1>
-                <p class="text-sm mt-1" style="color: var(--ion-color-medium);">{% trans "Audit trail of all Verifactu operations" %}</p>
-            </div>
-        </div>
-    </div>
 
     <!-- Filter -->
     <ion-card class="m-0 mb-4">
@@ -37,7 +21,7 @@
                     name="type"
                     value="{{ event_type }}"
                     hx-get="{% url 'verifactu:events' %}"
-                    hx-target="#dashboard-content"
+                    hx-target="#main-content-area"
                     hx-trigger="ionChange">
                     <ion-select-option value="">{% trans "All Types" %}</ion-select-option>
                     {% for value, label in type_choices %}

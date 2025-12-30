@@ -1,0 +1,22 @@
+{% extends "ui/content_base.html" %}
+{% load static %}
+{% load i18n %}
+
+{% block page_title %}{% trans "Verifactu Contingency" %}{% endblock %}
+
+{# Section context for sidebar highlighting #}
+{% block content %}
+{% with current_section="verifactu" section_title=_("Verifactu") %}
+{{ block.super }}
+{% endwith %}
+{% endblock %}
+
+{% block module_tabbar %}
+
+{% include "verifactu/partials/tabbar.html" with current_view='contingency' %}
+
+{% endblock %}
+
+{% block page_content %}
+{% include "verifactu/partials/contingency_content.html" %}
+{% endblock %}

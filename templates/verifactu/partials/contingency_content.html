@@ -1,22 +1,17 @@
-{% load static %}
-{% load i18n %}
+{% load static i18n ui %}
 
 {% if request.htmx %}
-<div id="dashboard-tabbar" hx-swap-oob="innerHTML">
-<ion-footer>
+<ion-footer id="dashboard-tabbar" hx-swap-oob="outerHTML">
 {% include "verifactu/partials/tabbar.html" with current_view='contingency' %}
 </ion-footer>
-</div>
 {% endif %}
+
+{% ui_page_header title=_("Contingency Management") subtitle=_("Queue management and failure recovery") %}
 
 {% csrf_token %}
 <div x-data="contingencyApp()" class="ion-padding">
-    <!-- Page Header -->
-    <div class="flex justify-between items-center mb-6">
-        <div>
-            <h1 class="text-2xl font-bold" style="color: var(--ion-text-color);">{% trans "Contingency Management" %}</h1>
-            <p class="text-sm mt-1" style="color: var(--ion-color-medium);">{% trans "Queue management and failure recovery" %}</p>
-        </div>
+    <!-- Process Queue Button -->
+    <div class="flex justify-end mb-4">
         <ion-button @click="processQueue()" :disabled="processing" color="success">
             <ion-spinner x-show="processing" name="crescent" slot="start"></ion-spinner>
             <ion-icon x-show="!processing" slot="start" name="sync-outline"></ion-icon>
@@ -175,7 +170,7 @@
                 <ion-card-title>{% trans "Recent Events" %}</ion-card-title>
                 <ion-button size="small" fill="clear"
                     hx-get="{% url 'verifactu:events' %}"
-                    hx-target="#dashboard-content"
+                    hx-target="#main-content-area"
                     hx-push-url="true">
                     {% trans "View All" %}
                 </ion-button>
@@ -245,7 +240,7 @@
                         <p class="text-sm mb-4"><strong>{% trans "Recovery" %}:</strong> {% trans "Query AEAT for last hash or enter manually" %}</p>
                         <ion-button size="small"
                             hx-get="{% url 'verifactu:recovery' %}"
-                            hx-target="#dashboard-content"
+                            hx-target="#main-content-area"
                             hx-push-url="true">
                             <ion-icon slot="start" name="construct-outline"></ion-icon>
                             {% trans "Go to Chain Recovery" %}
@@ -348,7 +343,8 @@ window.contingencyApp = function() {
     }
 };
 
-document.addEventListener('htmx:afterSwap', function(event) {
+// Using 'afterSettle' to ensure scripts have executed before Alpine init
+document.addEventListener('htmx:afterSettle', function(event) {
     if (event.detail.target.id === 'dashboard-content') {
         const alpineEl = event.detail.target.querySelector('[x-data]');
         if (alpineEl && !alpineEl._x_dataStack) {

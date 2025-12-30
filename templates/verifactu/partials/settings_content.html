@@ -1,440 +1,321 @@
-{% load static %}
-{% load i18n %}
+{% load static i18n ui component_tags %}
 
 {% if request.htmx %}
-<div id="dashboard-tabbar" hx-swap-oob="innerHTML">
-<ion-footer>
+<ion-footer id="dashboard-tabbar" hx-swap-oob="outerHTML">
 {% include "verifactu/partials/tabbar.html" with current_view='settings' %}
 </ion-footer>
-</div>
 {% endif %}
 
-{% csrf_token %}
+{% ui_page_header title=_("Verifactu Settings") %}
 
-<div id="verifactu-settings-container"
-     x-data='{
-        settings: {
-            software_name: "{{ config.software_name|default:'ERPlora POS'|escapejs }}",
-            software_id: "{{ config.software_id|default:''|escapejs }}",
-            software_version: "{{ config.software_version|default:'1.0.0'|escapejs }}",
-            software_nif: "{{ config.software_nif|default:''|escapejs }}",
-            environment: "{{ config.environment|default:'testing' }}",
-            auto_submit: {{ config.auto_submit|yesno:'true,false,false' }},
-            certificate_path: "{{ config.certificate_path|default:''|escapejs }}"
-        },
-        currentMode: "{{ config.mode|default:'verifactu' }}",
-        selectedMode: "{{ config.mode|default:'verifactu' }}",
-        changingMode: false,
-        selectedCertFile: null,
-        certPassword: "",
-        uploading: false,
-        uploadResult: null,
-        selectMode(mode) { this.selectedMode = mode },
-        changeMode() {
-            if (this.selectedMode === this.currentMode) return;
-            this.changingMode = true;
-            fetch("{% url 'verifactu:change_mode' %}", {
-                method: "POST",
-                headers: { "Content-Type": "application/json", "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value },
-                body: JSON.stringify({ mode: this.selectedMode })
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) { this.currentMode = this.selectedMode; this.showToast(data.message, "success"); }
-                else { this.selectedMode = this.currentMode; this.showToast(data.error, "danger"); }
-            })
-            .catch(e => { this.selectedMode = this.currentMode; this.showToast(e.message, "danger"); })
-            .finally(() => { this.changingMode = false; });
-        },
-        handleCertificateSelect(event) {
-            const file = event.target.files[0];
-            if (file) { this.selectedCertFile = file; this.uploadResult = null; }
-        },
-        uploadCertificate() {
-            if (!this.selectedCertFile) return;
-            this.uploading = true; this.uploadResult = null;
-            const formData = new FormData();
-            formData.append("certificate", this.selectedCertFile);
-            formData.append("password", this.certPassword);
-            fetch("{% url 'verifactu:upload_certificate' %}", {
-                method: "POST",
-                headers: { "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value },
-                body: formData
-            })
-            .then(r => r.json())
-            .then(result => {
-                this.uploadResult = result;
-                if (result.success) {
-                    this.selectedCertFile = null; this.certPassword = "";
-                    this.settings.certificate_path = result.certificate_path;
-                    this.showToast(result.message, "success");
-                    setTimeout(() => { htmx.ajax("GET", "{% url 'verifactu:settings' %}", {target: "#dashboard-content"}); }, 1500);
-                } else { this.showToast(result.error, "danger"); }
-            })
-            .catch(e => { this.uploadResult = { success: false, error: e.message }; this.showToast(e.message, "danger"); })
-            .finally(() => { this.uploading = false; });
-        },
-        saveSettings() {
-            fetch("{% url 'verifactu:settings' %}", {
-                method: "POST",
-                headers: { "Content-Type": "application/json", "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value },
-                body: JSON.stringify({ ...this.settings, auto_submit: this.settings.auto_submit ? "true" : "false" })
-            })
-            .then(r => r.json())
-            .then(data => { if (data.success) { this.showToast(data.message, "success"); } else { this.showToast(data.error, "danger"); } })
-            .catch(() => { this.showToast("Error saving settings", "danger"); });
-        },
-        showToast(message, color) {
-            const toast = document.createElement("ion-toast");
-            toast.message = message; toast.duration = 3000; toast.color = color || "primary"; toast.position = "top";
-            document.body.appendChild(toast); toast.present();
-        }
-     }'
-     class="ion-padding">
+<div class="ion-padding">
+
     {% if demo_mode %}
-    <!-- Demo Mode Banner -->
-    <div class="mb-4 p-3 rounded-lg flex items-center gap-3" style="background: var(--ion-color-warning-tint);">
+    {# Demo Mode Banner #}
+    <div class="d-flex align-center gap-sm mb-lg p-md rounded-md" style="background: var(--ion-color-warning-tint);">
         <ion-icon name="flask-outline" color="warning" style="font-size: 24px;"></ion-icon>
         <div>
-            <span class="font-medium" style="color: var(--ion-color-warning-shade);">{% trans "Demo Mode Active" %}</span>
-            <p class="text-xs" style="color: var(--ion-color-warning-shade);">
+            <span class="fw-semibold" style="color: var(--ion-color-warning-shade);">{% trans "Demo Mode Active" %}</span>
+            <p class="fs-sm m-0" style="color: var(--ion-color-warning-shade);">
                 {% trans "AEAT connections are simulated. Set VERIFACTU_DEMO_MODE=false to disable." %}
             </p>
         </div>
     </div>
     {% endif %}
 
-    <!-- Page Header -->
-    <div class="flex justify-between items-center mb-6">
-        <div>
-            <h1 class="text-2xl font-bold" style="color: var(--ion-text-color);">{% trans "Verifactu Settings" %}</h1>
-            <p class="text-sm mt-1" style="color: var(--ion-color-medium);">{% trans "Configure AEAT connection and software information" %}</p>
-        </div>
-        <ion-button @click="saveSettings()" color="success">
-            <ion-icon slot="start" name="save-outline"></ion-icon>
-            {% trans "Save" %}
-        </ion-button>
-    </div>
-
-    <!-- Operating Mode Section -->
-    <ion-card class="m-0 mb-6">
-        <ion-card-header>
-            <ion-card-title>{% trans "Operating Mode" %}</ion-card-title>
-            <ion-card-subtitle>{% trans "Choose how invoices are reported to AEAT" %}</ion-card-subtitle>
-        </ion-card-header>
+    {# Operating Mode #}
+    <ion-card class="m-0 mb-lg">
         <ion-card-content>
-            <div class="space-y-4">
+            {% component "setting_section" title=_("Operating Mode") %}
+                <p class="fs-sm text-secondary mb-md">{% trans "Choose how invoices are reported to AEAT" %}</p>
+
                 {% if mode_lock_info.locked and not mode_lock_info.can_change %}
-                <!-- Mode is locked -->
-                <div class="p-4 rounded-lg" style="background: var(--ion-color-warning-tint);">
-                    <div class="flex items-center gap-3">
-                        <ion-icon name="lock-closed" color="warning" style="font-size: 24px;"></ion-icon>
-                        <div>
-                            <div class="font-semibold" style="color: var(--ion-color-warning-shade);">
-                                {% trans "Mode Locked" %}
-                            </div>
-                            <p class="text-sm" style="color: var(--ion-color-warning-shade);">
-                                {{ mode_lock_info.message }}
-                            </p>
-                        </div>
+                {# Mode is locked #}
+                <div class="d-flex align-center gap-sm mb-md p-md rounded-md" style="background: var(--ion-color-warning-tint);">
+                    <ion-icon name="lock-closed" color="warning" style="font-size: 24px;"></ion-icon>
+                    <div>
+                        <span class="fw-semibold" style="color: var(--ion-color-warning-shade);">{% trans "Mode Locked" %}</span>
+                        <p class="fs-sm m-0" style="color: var(--ion-color-warning-shade);">{{ mode_lock_info.message }}</p>
                     </div>
                 </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="p-4 rounded-lg border-2"
-                        style="{% if config.mode == 'verifactu' %}border-color: var(--ion-color-success); background: var(--ion-color-success-tint);{% else %}border-color: var(--ion-color-medium); opacity: 0.6;{% endif %}">
-                        <div class="flex items-center gap-2">
+
+                <div class="setting-form-grid">
+                    <div class="p-md rounded-md" style="{% if config.mode == 'verifactu' %}border: 2px solid var(--ion-color-success); background: var(--ion-color-success-tint);{% else %}border: 2px solid var(--ion-color-medium); opacity: 0.6;{% endif %}">
+                        <div class="d-flex align-center gap-sm">
                             {% if config.mode == 'verifactu' %}
                             <ion-icon name="checkmark-circle" color="success"></ion-icon>
                             {% endif %}
-                            <span class="font-semibold">VERI*FACTU</span>
+                            <span class="fw-semibold">VERI*FACTU</span>
                         </div>
-                        <p class="text-sm mt-1" style="color: var(--ion-color-medium);">
-                            {% trans "Real-time transmission to AEAT" %}
-                        </p>
+                        <p class="fs-sm m-0 mt-xs text-secondary">{% trans "Real-time transmission to AEAT" %}</p>
                     </div>
-                    <div class="p-4 rounded-lg border-2"
-                        style="{% if config.mode == 'no_verifactu' %}border-color: var(--ion-color-success); background: var(--ion-color-success-tint);{% else %}border-color: var(--ion-color-medium); opacity: 0.6;{% endif %}">
-                        <div class="flex items-center gap-2">
+                    <div class="p-md rounded-md" style="{% if config.mode == 'no_verifactu' %}border: 2px solid var(--ion-color-success); background: var(--ion-color-success-tint);{% else %}border: 2px solid var(--ion-color-medium); opacity: 0.6;{% endif %}">
+                        <div class="d-flex align-center gap-sm">
                             {% if config.mode == 'no_verifactu' %}
                             <ion-icon name="checkmark-circle" color="success"></ion-icon>
                             {% endif %}
-                            <span class="font-semibold">NO VERI*FACTU</span>
+                            <span class="fw-semibold">NO VERI*FACTU</span>
                         </div>
-                        <p class="text-sm mt-1" style="color: var(--ion-color-medium);">
-                            {% trans "Local storage with QR verification" %}
-                        </p>
-                    </div>
-                </div>
-                {% else %}
-                <!-- Mode can be changed -->
-                <div class="p-4 rounded-lg" style="background: var(--ion-color-step-50);">
-                    <div class="flex items-start gap-2">
-                        <ion-icon name="information-circle-outline" style="font-size: 20px; color: var(--ion-color-primary);"></ion-icon>
-                        <div>
-                            <p class="text-sm" style="color: var(--ion-color-medium);">
-                                {% trans "Choose your operating mode carefully. Once you create the first invoice or ticket, this mode will be locked for the entire fiscal year." %}
-                            </p>
-                        </div>
+                        <p class="fs-sm m-0 mt-xs text-secondary">{% trans "Local storage with QR verification" %}</p>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- VERI*FACTU Mode -->
-                    <div class="p-4 rounded-lg border-2 cursor-pointer transition-all duration-200"
-                        :class="selectedMode === 'verifactu' ? 'border-success bg-success-tint' : 'border-medium hover:border-primary'"
-                        @click="selectMode('verifactu')">
-                        <div class="flex items-center gap-2 mb-2">
-                            <ion-icon name="cloud-upload-outline" style="font-size: 24px;" :color="selectedMode === 'verifactu' ? 'success' : 'primary'"></ion-icon>
-                            <span class="font-bold text-lg">VERI*FACTU</span>
+                {% else %}
+                {# Mode can be changed #}
+                <div class="d-flex align-start gap-sm mb-md p-md rounded-md" style="background: var(--ion-color-step-50);">
+                    <ion-icon name="information-circle-outline" style="font-size: 20px; color: var(--ion-color-primary);"></ion-icon>
+                    <p class="fs-sm m-0 text-secondary">
+                        {% trans "Choose your operating mode carefully. Once you create the first invoice or ticket, this mode will be locked for the entire fiscal year." %}
+                    </p>
+                </div>
+
+                <div id="mode-selection" class="setting-form-grid">
+                    {# VERI*FACTU Mode #}
+                    <div class="p-md rounded-md cursor-pointer {% if config.mode == 'verifactu' %}mode-card--active{% else %}mode-card{% endif %}"
+                         hx-post="{% url 'verifactu:change_mode' %}"
+                         hx-vals='{"mode": "verifactu"}'
+                         hx-target="#main-content-area"
+                         hx-indicator="#mode-spinner-verifactu">
+                        <div class="d-flex align-center gap-sm mb-sm">
+                            <ion-icon name="cloud-upload-outline" style="font-size: 24px;" color="{% if config.mode == 'verifactu' %}success{% else %}primary{% endif %}"></ion-icon>
+                            <span class="fw-bold fs-lg">VERI*FACTU</span>
                             <ion-badge color="success">{% trans "Recommended" %}</ion-badge>
+                            <ion-spinner id="mode-spinner-verifactu" name="crescent" class="htmx-indicator"></ion-spinner>
                         </div>
-                        <p class="text-sm mb-3" style="color: var(--ion-color-medium);">
-                            {% trans "Real-time transmission to AEAT" %}
-                        </p>
-                        <ul class="text-xs space-y-1" style="color: var(--ion-color-medium);">
-                            <li class="flex items-center gap-1">
+                        <p class="fs-sm text-secondary mb-sm">{% trans "Real-time transmission to AEAT" %}</p>
+                        <ul class="fs-xs text-secondary" style="list-style: none; padding: 0; margin: 0;">
+                            <li class="d-flex align-center gap-xs mb-xs">
                                 <ion-icon name="checkmark-outline" color="success"></ion-icon>
                                 {% trans "Automatic submission to AEAT" %}
                             </li>
-                            <li class="flex items-center gap-1">
+                            <li class="d-flex align-center gap-xs mb-xs">
                                 <ion-icon name="checkmark-outline" color="success"></ion-icon>
                                 {% trans "Immediate validation" %}
                             </li>
-                            <li class="flex items-center gap-1">
+                            <li class="d-flex align-center gap-xs">
                                 <ion-icon name="checkmark-outline" color="success"></ion-icon>
                                 {% trans "Higher compliance assurance" %}
                             </li>
                         </ul>
                     </div>
 
-                    <!-- NO VERI*FACTU Mode -->
-                    <div class="p-4 rounded-lg border-2 cursor-pointer transition-all duration-200"
-                        :class="selectedMode === 'no_verifactu' ? 'border-success bg-success-tint' : 'border-medium hover:border-primary'"
-                        @click="selectMode('no_verifactu')">
-                        <div class="flex items-center gap-2 mb-2">
-                            <ion-icon name="document-text-outline" style="font-size: 24px;" :color="selectedMode === 'no_verifactu' ? 'success' : 'medium'"></ion-icon>
-                            <span class="font-bold text-lg">NO VERI*FACTU</span>
+                    {# NO VERI*FACTU Mode #}
+                    <div class="p-md rounded-md cursor-pointer {% if config.mode == 'no_verifactu' %}mode-card--active{% else %}mode-card{% endif %}"
+                         hx-post="{% url 'verifactu:change_mode' %}"
+                         hx-vals='{"mode": "no_verifactu"}'
+                         hx-target="#main-content-area"
+                         hx-indicator="#mode-spinner-no-verifactu">
+                        <div class="d-flex align-center gap-sm mb-sm">
+                            <ion-icon name="document-text-outline" style="font-size: 24px;" color="{% if config.mode == 'no_verifactu' %}success{% else %}medium{% endif %}"></ion-icon>
+                            <span class="fw-bold fs-lg">NO VERI*FACTU</span>
+                            <ion-spinner id="mode-spinner-no-verifactu" name="crescent" class="htmx-indicator"></ion-spinner>
                         </div>
-                        <p class="text-sm mb-3" style="color: var(--ion-color-medium);">
-                            {% trans "Local storage with QR verification" %}
-                        </p>
-                        <ul class="text-xs space-y-1" style="color: var(--ion-color-medium);">
-                            <li class="flex items-center gap-1">
+                        <p class="fs-sm text-secondary mb-sm">{% trans "Local storage with QR verification" %}</p>
+                        <ul class="fs-xs text-secondary" style="list-style: none; padding: 0; margin: 0;">
+                            <li class="d-flex align-center gap-xs mb-xs">
                                 <ion-icon name="checkmark-outline" color="medium"></ion-icon>
                                 {% trans "Records stored locally" %}
                             </li>
-                            <li class="flex items-center gap-1">
+                            <li class="d-flex align-center gap-xs mb-xs">
                                 <ion-icon name="checkmark-outline" color="medium"></ion-icon>
                                 {% trans "QR code for client verification" %}
                             </li>
-                            <li class="flex items-center gap-1">
+                            <li class="d-flex align-center gap-xs">
                                 <ion-icon name="warning-outline" color="warning"></ion-icon>
                                 {% trans "Manual verification required" %}
                             </li>
                         </ul>
                     </div>
                 </div>
-
-                <template x-if="selectedMode !== currentMode">
-                    <ion-button expand="block" color="warning" @click="changeMode()" :disabled="changingMode">
-                        <ion-spinner x-show="changingMode" name="crescent" slot="start"></ion-spinner>
-                        <ion-icon x-show="!changingMode" slot="start" name="swap-horizontal-outline"></ion-icon>
-                        <span x-text="changingMode ? '{% trans "Changing..." %}' : '{% trans "Change Mode" %}'"></span>
-                    </ion-button>
-                </template>
                 {% endif %}
-            </div>
+            {% endcomponent %}
         </ion-card-content>
     </ion-card>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <!-- Software Information -->
-        <ion-card class="m-0">
-            <ion-card-header>
-                <ion-card-title>{% trans "Software Information" %}</ion-card-title>
-                <ion-card-subtitle>{% trans "Required for AEAT registration" %}</ion-card-subtitle>
-            </ion-card-header>
-            <ion-card-content>
-                <div class="space-y-4">
-                    <ion-item>
-                        <ion-input
-                            label="{% trans 'Software Name' %} *"
-                            label-placement="stacked"
-                            x-model="settings.software_name"
-                            placeholder="ERPlora POS"
-                            required>
-                        </ion-input>
-                    </ion-item>
-                    <ion-item>
-                        <ion-input
-                            label="{% trans 'Software ID' %} *"
-                            label-placement="stacked"
-                            x-model="settings.software_id"
-                            placeholder="ERPLORA-001"
-                            required>
-                        </ion-input>
-                    </ion-item>
-                    <ion-item>
-                        <ion-input
-                            label="{% trans 'Software Version' %} *"
-                            label-placement="stacked"
-                            x-model="settings.software_version"
-                            placeholder="1.0.0"
-                            required>
-                        </ion-input>
-                    </ion-item>
-                    <ion-item>
-                        <ion-input
-                            label="{% trans 'Software NIF' %}"
-                            label-placement="stacked"
-                            x-model="settings.software_nif"
-                            placeholder="B00000000">
-                        </ion-input>
-                    </ion-item>
-                </div>
-            </ion-card-content>
-        </ion-card>
+    {# Software Information #}
+    <ion-card class="m-0 mb-lg">
+        <ion-card-content>
+            {% component "setting_section" title=_("Software Information") %}
+                <p class="fs-sm text-secondary mb-md">{% trans "Required for AEAT registration" %}</p>
 
-        <!-- Environment -->
-        <ion-card class="m-0">
-            <ion-card-header>
-                <ion-card-title>{% trans "Environment" %}</ion-card-title>
-                <ion-card-subtitle>{% trans "AEAT connection settings" %}</ion-card-subtitle>
-            </ion-card-header>
-            <ion-card-content>
-                <div class="space-y-4">
-                    <ion-item>
+                <form hx-post="{% url 'verifactu:save_software_settings' %}"
+                      hx-target="body"
+                      hx-swap="beforeend"
+                      hx-indicator="#software-spinner">
+                    {% csrf_token %}
+                    <div class="setting-form-grid">
+                        <ion-item>
+                            <ion-input
+                                type="text"
+                                name="software_name"
+                                label="{% trans 'Software Name' %} *"
+                                label-placement="floating"
+                                value="{{ config.software_name|default:'ERPlora POS' }}"
+                                placeholder="ERPlora POS">
+                            </ion-input>
+                        </ion-item>
+                        <ion-item>
+                            <ion-input
+                                type="text"
+                                name="software_id"
+                                label="{% trans 'Software ID' %} *"
+                                label-placement="floating"
+                                value="{{ config.software_id|default:'' }}"
+                                placeholder="ERPLORA-001">
+                            </ion-input>
+                        </ion-item>
+                        <ion-item>
+                            <ion-input
+                                type="text"
+                                name="software_version"
+                                label="{% trans 'Software Version' %} *"
+                                label-placement="floating"
+                                value="{{ config.software_version|default:'1.0.0' }}"
+                                placeholder="1.0.0">
+                            </ion-input>
+                        </ion-item>
+                        <ion-item>
+                            <ion-input
+                                type="text"
+                                name="software_nif"
+                                label="{% trans 'Software NIF' %}"
+                                label-placement="floating"
+                                value="{{ config.software_nif|default:'' }}"
+                                placeholder="B00000000">
+                            </ion-input>
+                        </ion-item>
+                    </div>
+
+                    <div class="mt-lg pt-md" style="border-top: 1px solid var(--border-color);">
+                        <ion-button type="submit" expand="block">
+                            <ion-spinner id="software-spinner" name="crescent" class="htmx-indicator me-sm"></ion-spinner>
+                            {% trans "Save Software Settings" %}
+                        </ion-button>
+                    </div>
+                </form>
+            {% endcomponent %}
+        </ion-card-content>
+    </ion-card>
+
+    {# Environment & Auto-submit #}
+    <ion-card class="m-0 mb-lg">
+        <ion-card-content>
+            {% component "setting_section" title=_("AEAT Connection") %}
+                <form hx-post="{% url 'verifactu:save_connection_settings' %}"
+                      hx-target="body"
+                      hx-swap="beforeend"
+                      hx-indicator="#connection-settings-spinner">
+                    {% csrf_token %}
+
+                    <div class="setting-select">
+                        <div class="setting-select__content">
+                            <h3 class="setting-select__title">{% trans "Environment" %}</h3>
+                            <p class="setting-select__description">{% trans "Use Testing for development, Production for real submissions" %}</p>
+                        </div>
                         <ion-select
-                            label="{% trans 'Environment' %} *"
-                            label-placement="stacked"
-                            x-model="settings.environment"
-                            interface="popover">
+                            name="environment"
+                            value="{{ config.environment|default:'testing' }}"
+                            interface="popover"
+                            class="setting-select__field">
                             {% for value, label in environments %}
                             <ion-select-option value="{{ value }}">{{ label }}</ion-select-option>
                             {% endfor %}
                         </ion-select>
-                    </ion-item>
+                    </div>
 
-                    <ion-item>
+                    <div class="setting-toggle">
+                        <div class="setting-toggle__content">
+                            <h3 class="setting-toggle__title">{% trans "Auto-submit to AEAT" %}</h3>
+                            <p class="setting-toggle__description">{% trans "Automatically transmit invoices when created" %}</p>
+                        </div>
                         <ion-toggle
-                            x-model="settings.auto_submit"
-                            :checked="settings.auto_submit"
-                            :color="settings.auto_submit ? 'success' : 'medium'">
-                            {% trans "Auto-submit to AEAT" %}
+                            name="auto_submit"
+                            value="true"
+                            {% if config.auto_submit %}checked{% endif %}>
                         </ion-toggle>
+                    </div>
+
+                    <div class="mt-lg pt-md" style="border-top: 1px solid var(--border-color);">
+                        <ion-button type="submit" expand="block">
+                            <ion-spinner id="connection-settings-spinner" name="crescent" class="htmx-indicator me-sm"></ion-spinner>
+                            {% trans "Save Connection Settings" %}
+                        </ion-button>
+                    </div>
+                </form>
+            {% endcomponent %}
+        </ion-card-content>
+    </ion-card>
+
+    {# Digital Certificate #}
+    <ion-card class="m-0 mb-lg">
+        <ion-card-content>
+            {% component "setting_section" title=_("Digital Certificate") %}
+                <p class="fs-sm text-secondary mb-md">{% trans "PKCS#12 certificate for AEAT authentication" %}</p>
+
+                {% if config and config.certificate_path %}
+                <div class="d-flex align-center gap-sm mb-md p-md rounded-md" style="background: var(--ion-color-success-tint);">
+                    <ion-icon name="checkmark-circle" color="success" style="font-size: 24px;"></ion-icon>
+                    <div>
+                        <span class="fw-semibold">{% trans "Certificate configured" %}</span>
+                        {% if config.certificate_expiry %}
+                        <p class="fs-sm m-0 text-secondary">{% trans "Expires" %}: {{ config.certificate_expiry|date:"Y-m-d" }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% else %}
+                <div class="d-flex align-center gap-sm mb-md p-md rounded-md" style="background: var(--ion-color-warning-tint);">
+                    <ion-icon name="warning" color="warning" style="font-size: 24px;"></ion-icon>
+                    <span class="fw-semibold">{% trans "No certificate configured" %}</span>
+                </div>
+                {% endif %}
+
+                <form hx-post="{% url 'verifactu:upload_certificate' %}"
+                      hx-target="body"
+                      hx-swap="beforeend"
+                      hx-indicator="#certificate-spinner"
+                      hx-encoding="multipart/form-data">
+                    {% csrf_token %}
+
+                    <div class="setting-input" style="border-bottom: none;">
+                        <div class="setting-input__content">
+                            <h3 class="setting-input__title">{% trans "Upload Certificate" %}</h3>
+                            <p class="setting-input__description">{% trans "PKCS#12 format (.p12 or .pfx)" %}</p>
+                        </div>
+                        <div>
+                            {% ui_file_input name="certificate" label=_("Choose file") accept=".p12,.pfx" icon="document-outline" %}
+                        </div>
+                    </div>
+
+                    <ion-item class="mt-md">
+                        <ion-input
+                            type="password"
+                            name="password"
+                            label="{% trans 'Certificate Password' %}"
+                            label-placement="floating"
+                            placeholder="{% trans 'Enter certificate password' %}">
+                        </ion-input>
                     </ion-item>
 
-                    <div class="p-4 rounded-lg" style="background: var(--ion-color-step-50);">
-                        <div class="flex items-start gap-2">
-                            <ion-icon name="information-circle-outline" style="font-size: 20px; color: var(--ion-color-primary);"></ion-icon>
-                            <p class="text-sm" style="color: var(--ion-color-medium);">
-                                {% trans "Use Testing environment for development. Switch to Production only when ready for real submissions to AEAT." %}
-                            </p>
-                        </div>
+                    <div class="mt-lg pt-md" style="border-top: 1px solid var(--border-color);">
+                        <ion-button type="submit" expand="block" color="success">
+                            <ion-spinner id="certificate-spinner" name="crescent" class="htmx-indicator me-sm"></ion-spinner>
+                            <ion-icon slot="start" name="cloud-upload-outline"></ion-icon>
+                            {% trans "Upload Certificate" %}
+                        </ion-button>
                     </div>
-                </div>
-            </ion-card-content>
-        </ion-card>
+                </form>
+            {% endcomponent %}
+        </ion-card-content>
+    </ion-card>
 
-        <!-- Certificate -->
-        <ion-card class="m-0">
-            <ion-card-header>
-                <ion-card-title>{% trans "Digital Certificate" %}</ion-card-title>
-                <ion-card-subtitle>{% trans "PKCS#12 certificate for AEAT authentication" %}</ion-card-subtitle>
-            </ion-card-header>
-            <ion-card-content>
-                <div class="space-y-4">
-                    {% if config and config.certificate_path %}
-                    <div class="flex items-center gap-2 p-3 rounded-lg" style="background: var(--ion-color-success-tint);">
-                        <ion-icon name="checkmark-circle" color="success"></ion-icon>
-                        <div>
-                            <span class="text-sm font-medium">{% trans "Certificate configured" %}</span>
-                            {% if config.certificate_expiry %}
-                            <div class="text-xs" style="color: var(--ion-color-medium);">
-                                {% trans "Expires" %}: {{ config.certificate_expiry|date:"Y-m-d" }}
-                            </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                    {% else %}
-                    <div class="flex items-center gap-2 p-3 rounded-lg" style="background: var(--ion-color-warning-tint);">
-                        <ion-icon name="warning" color="warning"></ion-icon>
-                        <span class="text-sm">{% trans "No certificate configured" %}</span>
-                    </div>
-                    {% endif %}
+    {# Connection Test #}
+    <ion-card class="m-0 mb-lg">
+        <ion-card-content>
+            {% component "setting_section" title=_("Connection Test") %}
+                <p class="fs-sm text-secondary mb-md">{% trans "Verify AEAT connectivity and hash chain integrity" %}</p>
 
-                    <!-- Upload Form -->
-                    <div class="border-2 border-dashed rounded-lg p-4" style="border-color: var(--ion-color-medium);">
-                        <input type="file" id="certificate-file" accept=".p12,.pfx" class="hidden" @change="handleCertificateSelect($event)">
-                        <div class="text-center">
-                            <ion-icon name="cloud-upload-outline" style="font-size: 32px; color: var(--ion-color-medium);"></ion-icon>
-                            <p class="text-sm mt-2" style="color: var(--ion-color-medium);">
-                                {% trans "PKCS#12 format (.p12 or .pfx)" %}
-                            </p>
-                            <ion-button fill="outline" size="small" class="mt-2" @click="$refs.certInput.click()">
-                                {% trans "Select File" %}
-                            </ion-button>
-                            <input type="file" x-ref="certInput" accept=".p12,.pfx" class="hidden" @change="handleCertificateSelect($event)">
-                        </div>
-                    </div>
-
-                    <!-- Selected file info -->
-                    <template x-if="selectedCertFile">
-                        <div class="p-3 rounded-lg" style="background: var(--ion-color-step-50);">
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center gap-2">
-                                    <ion-icon name="document-outline"></ion-icon>
-                                    <span class="text-sm" x-text="selectedCertFile.name"></span>
-                                </div>
-                                <ion-button fill="clear" size="small" color="danger" @click="selectedCertFile = null; certPassword = '';">
-                                    <ion-icon slot="icon-only" name="close-outline"></ion-icon>
-                                </ion-button>
-                            </div>
-                            <ion-item class="mt-2">
-                                <ion-input
-                                    type="password"
-                                    label="{% trans 'Certificate Password' %}"
-                                    label-placement="stacked"
-                                    x-model="certPassword"
-                                    placeholder="{% trans 'Enter certificate password' %}">
-                                </ion-input>
-                            </ion-item>
-                            <ion-button expand="block" class="mt-3" @click="uploadCertificate()" :disabled="uploading" color="success">
-                                <ion-spinner x-show="uploading" name="crescent" slot="start"></ion-spinner>
-                                <ion-icon x-show="!uploading" slot="start" name="cloud-upload-outline"></ion-icon>
-                                <span x-text="uploading ? '{% trans "Uploading..." %}' : '{% trans "Upload Certificate" %}'"></span>
-                            </ion-button>
-                        </div>
-                    </template>
-
-                    <!-- Upload result -->
-                    <template x-if="uploadResult">
-                        <div class="p-3 rounded-lg"
-                            :style="uploadResult.success ? 'background: var(--ion-color-success-tint);' : 'background: var(--ion-color-danger-tint);'">
-                            <div class="flex items-center gap-2">
-                                <ion-icon
-                                    :name="uploadResult.success ? 'checkmark-circle' : 'close-circle'"
-                                    :color="uploadResult.success ? 'success' : 'danger'">
-                                </ion-icon>
-                                <span class="text-sm" x-text="uploadResult.message || uploadResult.error"></span>
-                            </div>
-                        </div>
-                    </template>
-                </div>
-            </ion-card-content>
-        </ion-card>
-
-        <!-- Connection Test -->
-        <ion-card class="m-0">
-            <ion-card-header>
-                <ion-card-title>{% trans "Connection Test" %}</ion-card-title>
-                <ion-card-subtitle>{% trans "Verify AEAT connectivity" %}</ion-card-subtitle>
-            </ion-card-header>
-            <ion-card-content>
-                <div class="space-y-4">
-                    <!-- Test Connection Button - HTMX -->
+                <div class="d-flex gap-md flex-wrap">
                     <ion-button
-                        expand="block"
                         hx-post="{% url 'verifactu:test_connection' %}"
                         hx-target="#connection-result"
                         hx-swap="innerHTML"
@@ -444,12 +325,7 @@
                         {% trans "Test Connection" %}
                     </ion-button>
 
-                    <!-- Connection Result Container -->
-                    <div id="connection-result"></div>
-
-                    <!-- Verify Chain Button - HTMX -->
                     <ion-button
-                        expand="block"
                         fill="outline"
                         hx-post="{% url 'verifactu:verify_chain' %}"
                         hx-target="#chain-result"
@@ -459,78 +335,73 @@
                         <ion-icon slot="start" name="link-outline" class="htmx-indicator-hide"></ion-icon>
                         {% trans "Verify Hash Chain" %}
                     </ion-button>
+                </div>
 
-                    <!-- Chain Result Container -->
-                    <div id="chain-result"></div>
-                </div>
-            </ion-card-content>
-        </ion-card>
-    </div>
-
-    <!-- Important Dates -->
-    <ion-card class="m-0 mt-6">
-        <ion-card-header>
-            <ion-card-title>{% trans "Important Dates" %}</ion-card-title>
-        </ion-card-header>
-        <ion-card-content>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div class="p-4 rounded-lg" style="background: var(--ion-color-step-50);">
-                    <div class="text-xs" style="color: var(--ion-color-medium);">{% trans "Software Deadline" %}</div>
-                    <div class="font-bold text-lg">29 {% trans "July" %} 2025</div>
-                    <div class="text-xs" style="color: var(--ion-color-medium);">{% trans "All software must be compliant" %}</div>
-                </div>
-                <div class="p-4 rounded-lg" style="background: var(--ion-color-step-50);">
-                    <div class="text-xs" style="color: var(--ion-color-medium);">{% trans "Corporate Deadline" %}</div>
-                    <div class="font-bold text-lg">1 {% trans "January" %} 2027</div>
-                    <div class="text-xs" style="color: var(--ion-color-medium);">{% trans "Corporate taxpayers" %}</div>
-                </div>
-                <div class="p-4 rounded-lg" style="background: var(--ion-color-step-50);">
-                    <div class="text-xs" style="color: var(--ion-color-medium);">{% trans "Autonomous Deadline" %}</div>
-                    <div class="font-bold text-lg">1 {% trans "July" %} 2027</div>
-                    <div class="text-xs" style="color: var(--ion-color-medium);">{% trans "Self-employed taxpayers" %}</div>
-                </div>
-            </div>
+                <div id="connection-result" class="mt-md"></div>
+                <div id="chain-result" class="mt-md"></div>
+            {% endcomponent %}
         </ion-card-content>
     </ion-card>
 
-    <!-- Declaración Responsable -->
-    <ion-card class="m-0 mt-6">
-        <ion-card-header>
-            <ion-card-title>{% trans "Responsible Declaration" %}</ion-card-title>
-            <ion-card-subtitle>{% trans "Software certification for AEAT compliance" %}</ion-card-subtitle>
-        </ion-card-header>
+    {# Important Dates #}
+    <ion-card class="m-0 mb-lg">
         <ion-card-content>
-            <div class="space-y-4">
-                <div class="p-4 rounded-lg border-2" style="border-color: var(--ion-color-success);">
-                    <div class="flex items-start gap-3">
+            {% component "setting_section" title=_("Important Dates") %}
+                <div class="setting-form-grid" style="grid-template-columns: repeat(3, 1fr);">
+                    <div class="p-md rounded-md" style="background: var(--ion-color-step-50);">
+                        <p class="fs-xs text-secondary m-0 mb-xs">{% trans "Software Deadline" %}</p>
+                        <p class="fs-lg fw-bold m-0">29 {% trans "July" %} 2025</p>
+                        <p class="fs-xs text-secondary m-0">{% trans "All software must be compliant" %}</p>
+                    </div>
+                    <div class="p-md rounded-md" style="background: var(--ion-color-step-50);">
+                        <p class="fs-xs text-secondary m-0 mb-xs">{% trans "Corporate Deadline" %}</p>
+                        <p class="fs-lg fw-bold m-0">1 {% trans "January" %} 2027</p>
+                        <p class="fs-xs text-secondary m-0">{% trans "Corporate taxpayers" %}</p>
+                    </div>
+                    <div class="p-md rounded-md" style="background: var(--ion-color-step-50);">
+                        <p class="fs-xs text-secondary m-0 mb-xs">{% trans "Autonomous Deadline" %}</p>
+                        <p class="fs-lg fw-bold m-0">1 {% trans "July" %} 2027</p>
+                        <p class="fs-xs text-secondary m-0">{% trans "Self-employed taxpayers" %}</p>
+                    </div>
+                </div>
+            {% endcomponent %}
+        </ion-card-content>
+    </ion-card>
+
+    {# Responsible Declaration #}
+    <ion-card class="m-0">
+        <ion-card-content>
+            {% component "setting_section" title=_("Responsible Declaration") %}
+                <p class="fs-sm text-secondary mb-md">{% trans "Software certification for AEAT compliance" %}</p>
+
+                <div class="p-md rounded-md mb-md" style="border: 2px solid var(--ion-color-success);">
+                    <div class="d-flex align-start gap-sm">
                         <ion-icon name="shield-checkmark" color="success" style="font-size: 24px; margin-top: 2px;"></ion-icon>
                         <div>
-                            <div class="font-semibold" style="color: var(--ion-color-success);">
-                                {% trans "Certified Software" %}
-                            </div>
-                            <p class="text-sm mt-1" style="color: var(--ion-color-medium);">
+                            <span class="fw-semibold" style="color: var(--ion-color-success);">{% trans "Certified Software" %}</span>
+                            <p class="fs-sm m-0 mt-xs text-secondary">
                                 {% trans "ERPlora Hub complies with RD 1007/2023 and Orden HAC/1177/2024 requirements for electronic invoicing systems." %}
                             </p>
                         </div>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4 text-sm">
+                <div class="setting-form-grid mb-md">
                     <div>
-                        <div class="text-xs font-semibold uppercase mb-1" style="color: var(--ion-color-medium);">{% trans "Software Name" %}</div>
-                        <div style="color: var(--ion-text-color);">ERPlora Hub</div>
+                        <p class="fs-xs fw-semibold text-secondary m-0 mb-xs" style="text-transform: uppercase;">{% trans "Software Name" %}</p>
+                        <p class="m-0">ERPlora Hub</p>
                     </div>
                     <div>
-                        <div class="text-xs font-semibold uppercase mb-1" style="color: var(--ion-color-medium);">{% trans "Software ID" %}</div>
-                        <div style="color: var(--ion-text-color);">EH</div>
+                        <p class="fs-xs fw-semibold text-secondary m-0 mb-xs" style="text-transform: uppercase;">{% trans "Software ID" %}</p>
+                        <p class="m-0">EH</p>
                     </div>
                     <div>
-                        <div class="text-xs font-semibold uppercase mb-1" style="color: var(--ion-color-medium);">{% trans "Version" %}</div>
-                        <div style="color: var(--ion-text-color);">{{ software_version|default:"1.0.0" }}</div>
+                        <p class="fs-xs fw-semibold text-secondary m-0 mb-xs" style="text-transform: uppercase;">{% trans "Version" %}</p>
+                        <p class="m-0">{{ software_version|default:"1.0.0" }}</p>
                     </div>
                     <div>
-                        <div class="text-xs font-semibold uppercase mb-1" style="color: var(--ion-color-medium);">{% trans "Producer" %}</div>
-                        <div style="color: var(--ion-text-color);">ERPlora</div>
+                        <p class="fs-xs fw-semibold text-secondary m-0 mb-xs" style="text-transform: uppercase;">{% trans "Producer" %}</p>
+                        <p class="m-0">ERPlora</p>
                     </div>
                 </div>
 
@@ -539,18 +410,19 @@
                     {% trans "View Responsible Declaration" %}
                 </ion-button>
 
-                <div class="flex items-start gap-2 p-3 rounded-lg" style="background: var(--ion-color-step-50);">
+                <div class="d-flex align-start gap-sm mt-md p-md rounded-md" style="background: var(--ion-color-step-50);">
                     <ion-icon name="information-circle-outline" style="font-size: 18px; color: var(--ion-color-primary);"></ion-icon>
-                    <p class="text-xs" style="color: var(--ion-color-medium);">
+                    <p class="fs-xs m-0 text-secondary">
                         {% trans "The Responsible Declaration certifies that this software meets all legal requirements established by Spanish tax authorities (AEAT) for Verifactu compliance. This declaration is required by Article 13 of RD 1007/2023." %}
                     </p>
                 </div>
-            </div>
+            {% endcomponent %}
         </ion-card-content>
     </ion-card>
+
 </div>
 
-<!-- Modal: Declaración Responsable -->
+{# Modal: Responsible Declaration #}
 <ion-modal id="declaration-modal" trigger="open-declaration-modal">
     <ion-header>
         <ion-toolbar>
@@ -563,80 +435,74 @@
         </ion-toolbar>
     </ion-header>
     <ion-content class="ion-padding">
-        <div class="declaration-content" style="font-family: monospace; font-size: 12px; line-height: 1.6;">
-            <div class="text-center mb-6 pb-4" style="border-bottom: 2px solid var(--ion-border-color);">
-                <h2 class="text-lg font-bold mb-2">{% trans "RESPONSIBLE DECLARATION" %}</h2>
-                <h3 class="text-sm" style="color: var(--ion-color-medium);">{% trans "INVOICING INFORMATION SYSTEM" %}</h3>
-                <p class="text-xs mt-2" style="color: var(--ion-color-medium);">
-                    {% trans "In accordance with Article 13 of Royal Decree 1007/2023" %}
+        <div style="font-family: monospace; font-size: 12px; line-height: 1.6;">
+            <div class="ion-text-center mb-lg pb-md" style="border-bottom: 2px solid var(--ion-border-color);">
+                <h2 class="fs-lg fw-bold mb-sm">{% trans "RESPONSIBLE DECLARATION" %}</h2>
+                <h3 class="fs-sm text-secondary">{% trans "INVOICING INFORMATION SYSTEM" %}</h3>
+                <p class="fs-xs mt-sm text-secondary">{% trans "In accordance with Article 13 of Royal Decree 1007/2023" %}</p>
+            </div>
+
+            <div class="mb-lg">
+                <h4 class="fw-bold mb-sm" style="color: var(--ion-color-primary);">1. {% trans "SYSTEM INFORMATION" %}</h4>
+                <table class="w-100 fs-sm">
+                    <tr><td class="py-xs text-secondary">{% trans "System Name" %}:</td><td class="py-xs fw-semibold">ERPlora Hub</td></tr>
+                    <tr><td class="py-xs text-secondary">{% trans "Identifier Code" %}:</td><td class="py-xs fw-semibold">EH</td></tr>
+                    <tr><td class="py-xs text-secondary">{% trans "Version" %}:</td><td class="py-xs fw-semibold">{{ software_version|default:"1.0.0" }}</td></tr>
+                </table>
+                <p class="mt-sm fs-xs text-secondary">
+                    {% trans "Modular business management system (ERP) with point of sale (POS) and electronic invoicing capabilities. Includes Verifactu module for Spanish invoicing compliance (RD 1007/2023)." %}
                 </p>
             </div>
 
-            <div class="space-y-4">
-                <div>
-                    <h4 class="font-bold mb-2" style="color: var(--ion-color-primary);">1. {% trans "SYSTEM INFORMATION" %}</h4>
-                    <table class="w-full text-sm">
-                        <tr><td class="py-1" style="color: var(--ion-color-medium);">{% trans "System Name" %}:</td><td class="py-1 font-semibold">ERPlora Hub</td></tr>
-                        <tr><td class="py-1" style="color: var(--ion-color-medium);">{% trans "Identifier Code" %}:</td><td class="py-1 font-semibold">EH</td></tr>
-                        <tr><td class="py-1" style="color: var(--ion-color-medium);">{% trans "Version" %}:</td><td class="py-1 font-semibold">{{ software_version|default:"1.0.0" }}</td></tr>
-                    </table>
-                    <p class="mt-2 text-xs" style="color: var(--ion-color-medium);">
-                        {% trans "Modular business management system (ERP) with point of sale (POS) and electronic invoicing capabilities. Includes Verifactu module for Spanish invoicing compliance (RD 1007/2023)." %}
-                    </p>
-                </div>
-
-                <div>
-                    <h4 class="font-bold mb-2" style="color: var(--ion-color-primary);">2. {% trans "TECHNICAL FEATURES" %}</h4>
-                    <ul class="text-xs space-y-1" style="color: var(--ion-color-medium);">
-                        <li>✓ {% trans "Generation of invoicing records (registration and cancellation)" %}</li>
-                        <li>✓ {% trans "SHA-256 hash chaining" %}</li>
-                        <li>✓ {% trans "Verifiable QR code generation" %}</li>
-                        <li>✓ {% trans "Automatic transmission to AEAT (VERI*FACTU mode)" %}</li>
-                        <li>✓ {% trans "Secure local storage (NO VERI*FACTU mode)" %}</li>
-                        <li>✓ {% trans "Event logging with guaranteed integrity" %}</li>
-                        <li>✓ {% trans "Contingency management and retries" %}</li>
-                        <li>✓ {% trans "Record export in XML format" %}</li>
-                    </ul>
-                </div>
-
-                <div>
-                    <h4 class="font-bold mb-2" style="color: var(--ion-color-primary);">3. {% trans "PRODUCER INFORMATION" %}</h4>
-                    <table class="w-full text-sm">
-                        <tr><td class="py-1" style="color: var(--ion-color-medium);">{% trans "Company" %}:</td><td class="py-1 font-semibold">ERPlora</td></tr>
-                        <tr><td class="py-1" style="color: var(--ion-color-medium);">{% trans "Contact" %}:</td><td class="py-1 font-semibold">support@erplora.com</td></tr>
-                        <tr><td class="py-1" style="color: var(--ion-color-medium);">{% trans "Website" %}:</td><td class="py-1 font-semibold">https://erplora.com</td></tr>
-                    </table>
-                </div>
-
-                <div>
-                    <h4 class="font-bold mb-2" style="color: var(--ion-color-primary);">4. {% trans "DECLARATION" %}</h4>
-                    <p class="text-xs" style="color: var(--ion-color-medium);">
-                        {% trans "The undersigned producer RESPONSIBLY DECLARES that the Invoicing Information System identified above:" %}
-                    </p>
-                    <ul class="text-xs space-y-1 mt-2" style="color: var(--ion-color-medium);">
-                        <li>a) {% trans "Complies with Article 29.2.j) of Law 58/2003 (General Tax Law)." %}</li>
-                        <li>b) {% trans "Complies with Royal Decree 1007/2023 requirements for invoicing systems." %}</li>
-                        <li>c) {% trans "Complies with technical specifications in Order HAC/1177/2024." %}</li>
-                        <li>d) {% trans "Guarantees integrity, conservation, accessibility, readability, traceability and unalterability of invoicing records." %}</li>
-                        <li>e) {% trans "Does not allow alteration of invoicing records once generated." %}</li>
-                        <li>f) {% trans "Allows Tax Administration access to invoicing records." %}</li>
-                    </ul>
-                </div>
-
-                <div class="mt-6 pt-4" style="border-top: 1px solid var(--ion-border-color);">
-                    <p class="text-xs" style="color: var(--ion-color-medium);">
-                        {% trans "This responsible declaration is valid for the indicated software version. Any update affecting invoicing functionalities will require a new declaration." %}
-                    </p>
-                </div>
+            <div class="mb-lg">
+                <h4 class="fw-bold mb-sm" style="color: var(--ion-color-primary);">2. {% trans "TECHNICAL FEATURES" %}</h4>
+                <ul class="fs-xs text-secondary" style="padding-left: 0; list-style: none;">
+                    <li class="mb-xs">✓ {% trans "Generation of invoicing records (registration and cancellation)" %}</li>
+                    <li class="mb-xs">✓ {% trans "SHA-256 hash chaining" %}</li>
+                    <li class="mb-xs">✓ {% trans "Verifiable QR code generation" %}</li>
+                    <li class="mb-xs">✓ {% trans "Automatic transmission to AEAT (VERI*FACTU mode)" %}</li>
+                    <li class="mb-xs">✓ {% trans "Secure local storage (NO VERI*FACTU mode)" %}</li>
+                    <li class="mb-xs">✓ {% trans "Event logging with guaranteed integrity" %}</li>
+                    <li class="mb-xs">✓ {% trans "Contingency management and retries" %}</li>
+                    <li>✓ {% trans "Record export in XML format" %}</li>
+                </ul>
             </div>
 
-            <div class="mt-6 p-4 rounded-lg text-center" style="background: var(--ion-color-step-50);">
-                <p class="text-xs" style="color: var(--ion-color-medium);">
+            <div class="mb-lg">
+                <h4 class="fw-bold mb-sm" style="color: var(--ion-color-primary);">3. {% trans "PRODUCER INFORMATION" %}</h4>
+                <table class="w-100 fs-sm">
+                    <tr><td class="py-xs text-secondary">{% trans "Company" %}:</td><td class="py-xs fw-semibold">ERPlora</td></tr>
+                    <tr><td class="py-xs text-secondary">{% trans "Contact" %}:</td><td class="py-xs fw-semibold">support@erplora.com</td></tr>
+                    <tr><td class="py-xs text-secondary">{% trans "Website" %}:</td><td class="py-xs fw-semibold">https://erplora.com</td></tr>
+                </table>
+            </div>
+
+            <div class="mb-lg">
+                <h4 class="fw-bold mb-sm" style="color: var(--ion-color-primary);">4. {% trans "DECLARATION" %}</h4>
+                <p class="fs-xs text-secondary">{% trans "The undersigned producer RESPONSIBLY DECLARES that the Invoicing Information System identified above:" %}</p>
+                <ul class="fs-xs text-secondary mt-sm" style="padding-left: 16px;">
+                    <li class="mb-xs">a) {% trans "Complies with Article 29.2.j) of Law 58/2003 (General Tax Law)." %}</li>
+                    <li class="mb-xs">b) {% trans "Complies with Royal Decree 1007/2023 requirements for invoicing systems." %}</li>
+                    <li class="mb-xs">c) {% trans "Complies with technical specifications in Order HAC/1177/2024." %}</li>
+                    <li class="mb-xs">d) {% trans "Guarantees integrity, conservation, accessibility, readability, traceability and unalterability of invoicing records." %}</li>
+                    <li class="mb-xs">e) {% trans "Does not allow alteration of invoicing records once generated." %}</li>
+                    <li>f) {% trans "Allows Tax Administration access to invoicing records." %}</li>
+                </ul>
+            </div>
+
+            <div class="pt-md" style="border-top: 1px solid var(--ion-border-color);">
+                <p class="fs-xs text-secondary">
+                    {% trans "This responsible declaration is valid for the indicated software version. Any update affecting invoicing functionalities will require a new declaration." %}
+                </p>
+            </div>
+
+            <div class="mt-lg p-md rounded-md ion-text-center" style="background: var(--ion-color-step-50);">
+                <p class="fs-xs m-0 text-secondary">
                     {% trans "Document generated in accordance with examples published by the Spanish Tax Agency (AEAT)" %}
                 </p>
                 <a href="https://sede.agenciatributaria.gob.es/Sede/iva/sistemas-informaticos-facturacion-verifactu.html"
                    target="_blank"
-                   class="text-xs"
+                   class="fs-xs"
                    style="color: var(--ion-color-primary);">
                     sede.agenciatributaria.gob.es
                 </a>
@@ -646,9 +512,33 @@
 </ion-modal>
 
 <style>
+.setting-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-sm);
+}
+
+@media (max-width: 768px) {
+    .setting-form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.mode-card {
+    border: 2px solid var(--ion-color-medium);
+    transition: all 0.2s ease;
+}
+
+.mode-card:hover {
+    border-color: var(--ion-color-primary);
+}
+
+.mode-card--active {
+    border: 2px solid var(--ion-color-warning);
+}
+
 /* HTMX indicator styles */
 .htmx-indicator { display: none; }
 .htmx-request .htmx-indicator { display: inline-block; }
 .htmx-request .htmx-indicator-hide { display: none; }
 </style>
-

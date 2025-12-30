@@ -1,0 +1,11 @@
+<script>
+(function() {
+    const toast = document.createElement('ion-toast');
+    toast.message = "{{ message|escapejs }}";
+    toast.duration = 3000;
+    toast.color = "{{ 'success' if success else 'danger' }}";
+    toast.position = "top";
+    document.body.appendChild(toast);
+    toast.present();
+})();
+</script>

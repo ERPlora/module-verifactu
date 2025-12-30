@@ -1,0 +1,51 @@
+{% comment %}
+Verifactu QR Code for Invoice Footer
+Injected via slot: invoicing.footer
+
+Context:
+- verifactu_enabled: bool
+- verifactu_record: VerifactuRecord instance or None
+- qr_url: URL for QR code verification
+- record_hash: Truncated hash for display
+- is_verifactu_mode: True if transmitting to AEAT
+{% endcomment %}
+
+{% if verifactu_enabled and verifactu_record %}
+<div class="verifactu-qr-section" style="margin-top: 16px; padding: 12px; border-top: 1px solid #e0e0e0;">
+    <div style="display: flex; align-items: center; gap: 12px;">
+        {% if qr_url %}
+        <div class="qr-code" style="flex-shrink: 0;">
+            <!-- QR code would be generated here -->
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data={{ qr_url|urlencode }}"
+                 alt="Verifactu QR"
+                 width="80"
+                 height="80"
+                 style="border: 1px solid #ddd;">
+        </div>
+        {% endif %}
+        <div class="verifactu-info" style="font-size: 10px; color: #666;">
+            <p style="margin: 0 0 4px 0;">
+                <strong>VERI*FACTU</strong>
+                {% if is_verifactu_mode %}
+                <span style="color: green;">Transmitido a AEAT</span>
+                {% else %}
+                <span style="color: orange;">Almacenado localmente</span>
+                {% endif %}
+            </p>
+            {% if record_hash %}
+            <p style="margin: 0; font-family: monospace; font-size: 9px;">
+                Hash: {{ record_hash }}
+            </p>
+            {% endif %}
+            <p style="margin: 4px 0 0 0; font-size: 9px;">
+                Verificar en: agenciatributaria.es
+            </p>
+        </div>
+    </div>
+</div>
+{% elif verifactu_enabled %}
+<div class="verifactu-pending" style="margin-top: 16px; padding: 8px; background: #fff3cd; border-radius: 4px; font-size: 10px;">
+    <ion-icon name="time-outline" style="vertical-align: middle;"></ion-icon>
+    Registro Verifactu pendiente
+</div>
+{% endif %}

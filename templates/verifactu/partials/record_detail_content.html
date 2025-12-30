@@ -1,31 +1,19 @@
-{% load static %}
-{% load i18n %}
+{% load static i18n ui %}
 
 {% if request.htmx %}
-<div id="dashboard-tabbar" hx-swap-oob="innerHTML">
-<ion-footer>
+<ion-footer id="dashboard-tabbar" hx-swap-oob="outerHTML">
 {% include "verifactu/partials/tabbar.html" with current_view='records' %}
 </ion-footer>
-</div>
+{% endif %}
+
+{% if record.record_type == 'alta' %}
+{% ui_page_header title=record.invoice_number subtitle=_("Registration Record") %}
+{% else %}
+{% ui_page_header title=record.invoice_number subtitle=_("Cancellation Record") %}
 {% endif %}
 
 <div class="ion-padding">
-    <!-- Page Header -->
-    <div class="flex justify-between items-center mb-6">
-        <div class="flex items-center gap-4">
-            <ion-button fill="clear"
-                hx-get="{% url 'verifactu:records' %}"
-                hx-target="#dashboard-content"
-                hx-push-url="true">
-                <ion-icon slot="icon-only" name="arrow-back-outline"></ion-icon>
-            </ion-button>
-            <div>
-                <h1 class="text-2xl font-bold" style="color: var(--ion-text-color);">{{ record.invoice_number }}</h1>
-                <p class="text-sm mt-1" style="color: var(--ion-color-medium);">
-                    {% if record.record_type == 'alta' %}{% trans "Registration Record" %}{% else %}{% trans "Cancellation Record" %}{% endif %}
-                </p>
-            </div>
-        </div>
+    <!-- Status Badges -->
         <div>
             {% if record.status == 'pending' %}
             <ion-badge color="warning" style="font-size: 14px; padding: 8px 16px;">{% trans "Pending" %}</ion-badge>

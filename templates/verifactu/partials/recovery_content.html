@@ -1,7 +1,7 @@
-{% load static i18n ui %}
+{% load static i18n ui component_tags %}
 
 {% if request.htmx %}
-{% include "verifactu/partials/tabbar.html" with current_view='contingency' oob=True %}
+{% component "tabbar" module_id="verifactu" current_view="contingency" oob=True %}{% endcomponent %}
 {% endif %}
 
 {% ui_page_header title=_("Chain Recovery") subtitle=_("Recover hash chain after database restore or migration") %}

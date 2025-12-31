@@ -1,7 +1,7 @@
-{% load static i18n ui %}
+{% load static i18n ui component_tags %}
 
 {% if request.htmx %}
-{% include "verifactu/partials/tabbar.html" with current_view='records' oob=True %}
+{% component "tabbar" module_id="verifactu" current_view="records" oob=True %}{% endcomponent %}
 {% endif %}
 
 {% if record.record_type == 'alta' %}

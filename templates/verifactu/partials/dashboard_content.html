@@ -1,7 +1,7 @@
-{% load i18n ui %}
+{% load i18n ui component_tags %}
 
 {% if request.htmx %}
-{% include "verifactu/partials/tabbar.html" with current_view='dashboard' oob=True %}
+{% component "tabbar" module_id="verifactu" current_view="dashboard" oob=True %}{% endcomponent %}
 {% endif %}
 
 {% ui_page_header title="Verifactu" subtitle=_("Spanish electronic invoicing compliance") %}

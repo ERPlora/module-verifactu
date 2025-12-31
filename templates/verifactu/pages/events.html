@@ -1,21 +1,7 @@
-{% extends "ui/content_base.html" %}
-{% load static %}
+{% extends "ui/app_base.html" %}
 {% load i18n %}
 
 {% block page_title %}{% trans "Verifactu Events" %}{% endblock %}
-
-{# Section context for sidebar highlighting #}
-{% block content %}
-{% with current_section="verifactu" section_title=_("Verifactu") %}
-{{ block.super }}
-{% endwith %}
-{% endblock %}
-
-{% block module_tabbar %}
-
-{% include "verifactu/partials/tabbar.html" with current_view='events' %}
-
-{% endblock %}
 
 {% block page_content %}
 {% include "verifactu/partials/events_content.html" %}

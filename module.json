@@ -53,6 +53,32 @@
       "field": "pending_count"
     }
   },
+  "tabs": [
+    {
+      "id": "dashboard",
+      "url": "verifactu:dashboard",
+      "icon": "speedometer-outline",
+      "label": "Dashboard"
+    },
+    {
+      "id": "records",
+      "url": "verifactu:records",
+      "icon": "document-text-outline",
+      "label": "Records"
+    },
+    {
+      "id": "contingency",
+      "url": "verifactu:contingency",
+      "icon": "shield-checkmark-outline",
+      "label": "Contingency"
+    },
+    {
+      "id": "settings",
+      "url": "verifactu:settings",
+      "icon": "settings-outline",
+      "label": "Settings"
+    }
+  ],
   "settings": {
     "enabled": true,
     "mode": "verifactu",

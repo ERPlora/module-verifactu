@@ -1,375 +1,422 @@
 {% load static i18n ui component_tags %}
 
-{% if request.htmx %}
-{% component "tabbar" module_id="verifactu" current_view="contingency" oob=True %}{% endcomponent %}
-{% endif %}
+{% component "page"
+    title=_("Chain Recovery")
+    subtitle=_("Recover hash chain after database restore or migration")
+    module_id="verifactu"
+    tabbar_view="contingency" %}
 
-{% ui_page_header title=_("Chain Recovery") subtitle=_("Recover hash chain after database restore or migration") %}
+    {% fill "content" %}
+        {% csrf_token %}
 
-{% csrf_token %}
-<div x-data="recoveryApp()" class="ion-padding">
-
-    <!-- Explanation Card -->
-    <ion-card class="m-0 mb-6">
-        <ion-card-header>
-            <ion-card-title>
-                <ion-icon name="help-circle-outline" class="mr-2"></ion-icon>
-                {% trans "What is hash chain recovery?" %}
-            </ion-card-title>
-        </ion-card-header>
-        <ion-card-content>
-            <div class="space-y-4">
-                <p>{% trans "Each invoice contains the hash of the previous one, creating an unbreakable chain:" %}</p>
-
-                <div class="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg font-mono text-sm overflow-x-auto">
-                    <div class="flex items-center gap-4 min-w-max">
-                        <div class="text-center">
-                            <div class="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mb-1">
-                                <ion-icon name="document-outline" class="text-primary text-xl"></ion-icon>
-                            </div>
-                            <div class="text-xs">F1</div>
-                            <div class="text-xs text-gray-500">Hash: AAA</div>
-                        </div>
-                        <ion-icon name="arrow-forward" class="text-gray-400"></ion-icon>
-                        <div class="text-center">
-                            <div class="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mb-1">
-                                <ion-icon name="document-outline" class="text-primary text-xl"></ion-icon>
-                            </div>
-                            <div class="text-xs">F2</div>
-                            <div class="text-xs text-gray-500">Hash: BBB</div>
-                            <div class="text-xs text-primary">uses AAA</div>
-                        </div>
-                        <ion-icon name="arrow-forward" class="text-gray-400"></ion-icon>
-                        <div class="text-center">
-                            <div class="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mb-1">
-                                <ion-icon name="document-outline" class="text-primary text-xl"></ion-icon>
-                            </div>
-                            <div class="text-xs">F3</div>
-                            <div class="text-xs text-gray-500">Hash: CCC</div>
-                            <div class="text-xs text-primary">uses BBB</div>
-                        </div>
-                        <ion-icon name="arrow-forward" class="text-gray-400"></ion-icon>
-                        <div class="text-center">
-                            <div class="w-12 h-12 rounded-full bg-warning/20 flex items-center justify-center mb-1">
-                                <ion-icon name="help-outline" class="text-warning text-xl"></ion-icon>
-                            </div>
-                            <div class="text-xs">F4?</div>
-                            <div class="text-xs text-warning">needs CCC</div>
-                        </div>
-                    </div>
-                </div>
-
-                <p>{% trans "If you restore a backup, you might lose recent invoices. New invoices would use the wrong hash and AEAT would reject them." %}</p>
-
-                <p><strong>{% trans "Solution:" %}</strong> {% trans "Query AEAT for the last hash they have, or enter it manually." %}</p>
-            </div>
-        </ion-card-content>
-    </ion-card>
-
-    <!-- Current Chain Status -->
-    <ion-card class="m-0 mb-6">
-        <ion-card-header>
-            <ion-card-title>
-                <ion-icon name="link-outline" class="mr-2"></ion-icon>
-                {% trans "Current Chain Status" %}
-            </ion-card-title>
-        </ion-card-header>
-        <ion-card-content>
-            <div x-show="loading" class="text-center py-4">
-                <ion-spinner name="crescent"></ion-spinner>
-                <p class="mt-2 text-sm" style="color: var(--ion-color-medium);">{% trans "Checking chain status..." %}</p>
-            </div>
-
-            <div x-show="!loading && chainStatus">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Local Status -->
-                    <div class="p-4 rounded-lg" :class="chainStatus.is_synced ? 'bg-success/10' : 'bg-warning/10'">
-                        <h4 class="font-semibold mb-2 flex items-center gap-2">
-                            <ion-icon name="desktop-outline"></ion-icon>
-                            {% trans "Local (Your Database)" %}
-                        </h4>
-                        <template x-if="chainStatus.local_last_invoice">
-                            <div>
-                                <p class="text-sm">{% trans "Last Invoice" %}: <strong x-text="chainStatus.local_last_invoice"></strong></p>
-                                <p class="text-xs font-mono mt-1 break-all" style="color: var(--ion-color-medium);" x-text="chainStatus.local_last_hash || 'No hash'"></p>
-                            </div>
-                        </template>
-                        <template x-if="!chainStatus.local_last_invoice">
-                            <p class="text-sm" style="color: var(--ion-color-medium);">{% trans "No local records" %}</p>
-                        </template>
-                    </div>
-
-                    <!-- AEAT Status -->
-                    <div class="p-4 rounded-lg" :class="chainStatus.is_synced ? 'bg-success/10' : 'bg-warning/10'">
-                        <h4 class="font-semibold mb-2 flex items-center gap-2">
-                            <ion-icon name="cloud-outline"></ion-icon>
-                            {% trans "AEAT (Tax Agency)" %}
-                        </h4>
-                        <template x-if="chainStatus.aeat_last_invoice">
-                            <div>
-                                <p class="text-sm">{% trans "Last Invoice" %}: <strong x-text="chainStatus.aeat_last_invoice"></strong></p>
-                                <p class="text-xs font-mono mt-1 break-all" style="color: var(--ion-color-medium);" x-text="chainStatus.aeat_last_hash || 'No hash'"></p>
-                            </div>
-                        </template>
-                        <template x-if="!chainStatus.aeat_last_invoice">
-                            <p class="text-sm" style="color: var(--ion-color-medium);">{% trans "Could not query AEAT" %}</p>
-                        </template>
-                    </div>
-                </div>
-
-                <!-- Sync Status -->
-                <div class="mt-4 p-4 rounded-lg" :class="chainStatus.is_synced ? 'bg-success/20' : 'bg-danger/20'">
-                    <div class="flex items-center gap-3">
-                        <ion-icon :name="chainStatus.is_synced ? 'checkmark-circle' : 'alert-circle'"
-                            :color="chainStatus.is_synced ? 'success' : 'danger'" class="text-2xl"></ion-icon>
-                        <div>
-                            <p class="font-semibold" x-text="chainStatus.message"></p>
-                            <template x-if="chainStatus.gap_count > 0">
-                                <p class="text-sm" style="color: var(--ion-color-medium);">
-                                    {% trans "Missing invoices" %}: <span x-text="chainStatus.gap_count"></span>
-                                </p>
-                            </template>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div x-show="!loading && !chainStatus" class="text-center py-4">
-                <ion-icon name="warning-outline" class="text-4xl text-warning"></ion-icon>
-                <p class="mt-2">{% trans "Could not determine chain status" %}</p>
-                <p class="text-sm" style="color: var(--ion-color-medium);">{% trans "Make sure a NIF is configured in Settings" %}</p>
-            </div>
-
-            <ion-button class="mt-4" expand="block" fill="outline" @click="refreshStatus()" :disabled="loading">
-                <ion-spinner x-show="loading" name="crescent" slot="start"></ion-spinner>
-                <ion-icon x-show="!loading" slot="start" name="refresh-outline"></ion-icon>
-                {% trans "Refresh Status" %}
-            </ion-button>
-        </ion-card-content>
-    </ion-card>
-
-    <!-- Recovery Options -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <!-- Option 1: Automatic Recovery -->
-        <ion-card class="m-0">
+        <!-- Explanation Card -->
+        <ion-card class="m-0 mb-6">
             <ion-card-header>
                 <ion-card-title>
-                    <ion-icon name="cloud-download-outline" class="mr-2 text-primary"></ion-icon>
-                    {% trans "Automatic Recovery" %}
+                    <ion-icon name="help-circle-outline" class="mr-2"></ion-icon>
+                    {% trans "What is hash chain recovery?" %}
                 </ion-card-title>
-                <ion-card-subtitle>{% trans "Recommended" %}</ion-card-subtitle>
             </ion-card-header>
             <ion-card-content>
-                <p class="mb-4">{% trans "Query AEAT to get the last hash automatically. This is the safest option." %}</p>
+                <div class="space-y-4">
+                    <p>{% trans "Each invoice contains the hash of the previous one, creating an unbreakable chain:" %}</p>
 
-                <ion-button expand="block" @click="recoverFromAEAT()" :disabled="recovering" color="success">
-                    <ion-spinner x-show="recovering" name="crescent" slot="start"></ion-spinner>
-                    <ion-icon x-show="!recovering" slot="start" name="download-outline"></ion-icon>
-                    {% trans "Query AEAT" %}
-                </ion-button>
-
-                <template x-if="aeatResult">
-                    <div class="mt-4 p-3 rounded-lg" :class="aeatResult.success ? 'bg-success/20' : 'bg-danger/20'">
-                        <p class="text-sm font-semibold" x-text="aeatResult.message"></p>
-                        <template x-if="aeatResult.recovered_hash">
-                            <div class="mt-2">
-                                <p class="text-xs" style="color: var(--ion-color-medium);">{% trans "Recovered hash" %}:</p>
-                                <p class="text-xs font-mono break-all" x-text="aeatResult.recovered_hash"></p>
+                    <div class="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg font-mono text-sm overflow-x-auto">
+                        <div class="flex items-center gap-4 min-w-max">
+                            <div class="text-center">
+                                <div class="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mb-1">
+                                    <ion-icon name="document-outline" class="text-primary text-xl"></ion-icon>
+                                </div>
+                                <div class="text-xs">F1</div>
+                                <div class="text-xs text-gray-500">Hash: AAA</div>
                             </div>
-                        </template>
+                            <ion-icon name="arrow-forward" class="text-gray-400"></ion-icon>
+                            <div class="text-center">
+                                <div class="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mb-1">
+                                    <ion-icon name="document-outline" class="text-primary text-xl"></ion-icon>
+                                </div>
+                                <div class="text-xs">F2</div>
+                                <div class="text-xs text-gray-500">Hash: BBB</div>
+                                <div class="text-xs text-primary">uses AAA</div>
+                            </div>
+                            <ion-icon name="arrow-forward" class="text-gray-400"></ion-icon>
+                            <div class="text-center">
+                                <div class="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mb-1">
+                                    <ion-icon name="document-outline" class="text-primary text-xl"></ion-icon>
+                                </div>
+                                <div class="text-xs">F3</div>
+                                <div class="text-xs text-gray-500">Hash: CCC</div>
+                                <div class="text-xs text-primary">uses BBB</div>
+                            </div>
+                            <ion-icon name="arrow-forward" class="text-gray-400"></ion-icon>
+                            <div class="text-center">
+                                <div class="w-12 h-12 rounded-full bg-warning/20 flex items-center justify-center mb-1">
+                                    <ion-icon name="help-outline" class="text-warning text-xl"></ion-icon>
+                                </div>
+                                <div class="text-xs">F4?</div>
+                                <div class="text-xs text-warning">needs CCC</div>
+                            </div>
+                        </div>
                     </div>
-                </template>
+
+                    <p>{% trans "If you restore a backup, you might lose recent invoices. New invoices would use the wrong hash and AEAT would reject them." %}</p>
+
+                    <p><strong>{% trans "Solution:" %}</strong> {% trans "Query AEAT for the last hash they have, or enter it manually." %}</p>
+                </div>
             </ion-card-content>
         </ion-card>
 
-        <!-- Option 2: Manual Recovery -->
-        <ion-card class="m-0">
+        <!-- Current Chain Status -->
+        <ion-card class="m-0 mb-6">
             <ion-card-header>
                 <ion-card-title>
-                    <ion-icon name="create-outline" class="mr-2 text-warning"></ion-icon>
-                    {% trans "Manual Recovery" %}
+                    <ion-icon name="link-outline" class="mr-2"></ion-icon>
+                    {% trans "Current Chain Status" %}
                 </ion-card-title>
-                <ion-card-subtitle>{% trans "Advanced" %}</ion-card-subtitle>
             </ion-card-header>
             <ion-card-content>
-                <p class="mb-4">{% trans "If you know the last hash (e.g., from a backup or AEAT portal), enter it manually." %}</p>
+                <div id="chain-status-loading" class="text-center py-4">
+                    <ion-spinner name="crescent"></ion-spinner>
+                    <p class="mt-2 text-sm" style="color: var(--ion-color-medium);">{% trans "Checking chain status..." %}</p>
+                </div>
 
-                <ion-item class="mb-4">
-                    <ion-label position="stacked">{% trans "Last Known Hash" %}</ion-label>
-                    <ion-input
-                        type="text"
-                        x-model="manualHash"
-                        placeholder="{% trans 'Enter 64-character SHA-256 hash' %}"
-                        maxlength="64"
-                        style="font-family: monospace; font-size: 12px;">
-                    </ion-input>
-                </ion-item>
+                <div id="chain-status-content" style="display: none;">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Local Status -->
+                        <div id="local-status-box" class="p-4 rounded-lg">
+                            <h4 class="font-semibold mb-2 flex items-center gap-2">
+                                <ion-icon name="desktop-outline"></ion-icon>
+                                {% trans "Local (Your Database)" %}
+                            </h4>
+                            <div id="local-status-info"></div>
+                        </div>
 
-                <p class="text-xs mb-4" style="color: var(--ion-color-medium);">
-                    <ion-icon name="information-circle-outline"></ion-icon>
-                    {% trans "The hash must be 64 uppercase hexadecimal characters (A-F, 0-9)" %}
-                </p>
-
-                <ion-button expand="block" color="warning" @click="recoverManual()"
-                    :disabled="!isValidHash || recovering">
-                    <ion-spinner x-show="recovering" name="crescent" slot="start"></ion-spinner>
-                    <ion-icon x-show="!recovering" slot="start" name="save-outline"></ion-icon>
-                    {% trans "Apply Hash" %}
-                </ion-button>
-
-                <template x-if="manualResult">
-                    <div class="mt-4 p-3 rounded-lg" :class="manualResult.success ? 'bg-success/20' : 'bg-danger/20'">
-                        <p class="text-sm font-semibold" x-text="manualResult.message"></p>
+                        <!-- AEAT Status -->
+                        <div id="aeat-status-box" class="p-4 rounded-lg">
+                            <h4 class="font-semibold mb-2 flex items-center gap-2">
+                                <ion-icon name="cloud-outline"></ion-icon>
+                                {% trans "AEAT (Tax Agency)" %}
+                            </h4>
+                            <div id="aeat-status-info"></div>
+                        </div>
                     </div>
-                </template>
+
+                    <!-- Sync Status -->
+                    <div id="sync-status-box" class="mt-4 p-4 rounded-lg">
+                        <div class="flex items-center gap-3">
+                            <ion-icon id="sync-status-icon" class="text-2xl"></ion-icon>
+                            <div>
+                                <p id="sync-status-message" class="font-semibold"></p>
+                                <p id="sync-gap-count" class="text-sm" style="color: var(--ion-color-medium); display: none;"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="chain-status-error" class="text-center py-4" style="display: none;">
+                    <ion-icon name="warning-outline" class="text-4xl text-warning"></ion-icon>
+                    <p class="mt-2">{% trans "Could not determine chain status" %}</p>
+                    <p class="text-sm" style="color: var(--ion-color-medium);">{% trans "Make sure a NIF is configured in Settings" %}</p>
+                </div>
+
+                <ion-button id="refresh-status-btn" class="mt-4" expand="block" fill="outline" onclick="refreshStatus()">
+                    <ion-icon slot="start" name="refresh-outline"></ion-icon>
+                    {% trans "Refresh Status" %}
+                </ion-button>
             </ion-card-content>
         </ion-card>
-    </div>
 
-    <!-- Recovery History -->
-    {% if chain_status and chain_status.recovery_points %}
-    <ion-card class="m-0 mt-6">
-        <ion-card-header>
-            <ion-card-title>
-                <ion-icon name="time-outline" class="mr-2"></ion-icon>
-                {% trans "Recovery History" %}
-            </ion-card-title>
-        </ion-card-header>
-        <ion-card-content class="p-0">
-            <ion-list>
-                {% for point in chain_status.recovery_points %}
-                <ion-item>
-                    <ion-label>
-                        <h3>{{ point.recovered_at|date:"Y-m-d H:i" }}</h3>
-                        <p class="font-mono text-xs">{{ point.recovered_hash|truncatechars:20 }}</p>
-                        <p class="text-xs" style="color: var(--ion-color-medium);">
-                            {% trans "Source" %}: {{ point.source }}
-                            {% if point.recovered_invoice %} | {{ point.recovered_invoice }}{% endif %}
-                        </p>
-                    </ion-label>
-                </ion-item>
-                {% endfor %}
-            </ion-list>
-        </ion-card-content>
-    </ion-card>
-    {% endif %}
-</div>
+        <!-- Recovery Options -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Option 1: Automatic Recovery -->
+            <ion-card class="m-0">
+                <ion-card-header>
+                    <ion-card-title>
+                        <ion-icon name="cloud-download-outline" class="mr-2 text-primary"></ion-icon>
+                        {% trans "Automatic Recovery" %}
+                    </ion-card-title>
+                    <ion-card-subtitle>{% trans "Recommended" %}</ion-card-subtitle>
+                </ion-card-header>
+                <ion-card-content>
+                    <p class="mb-4">{% trans "Query AEAT to get the last hash automatically. This is the safest option." %}</p>
+
+                    <ion-button id="aeat-recover-btn" expand="block" onclick="recoverFromAEAT()" color="success">
+                        <ion-icon slot="start" name="download-outline"></ion-icon>
+                        {% trans "Query AEAT" %}
+                    </ion-button>
+
+                    <div id="aeat-result" class="mt-4 p-3 rounded-lg" style="display: none;"></div>
+                </ion-card-content>
+            </ion-card>
+
+            <!-- Option 2: Manual Recovery -->
+            <ion-card class="m-0">
+                <ion-card-header>
+                    <ion-card-title>
+                        <ion-icon name="create-outline" class="mr-2 text-warning"></ion-icon>
+                        {% trans "Manual Recovery" %}
+                    </ion-card-title>
+                    <ion-card-subtitle>{% trans "Advanced" %}</ion-card-subtitle>
+                </ion-card-header>
+                <ion-card-content>
+                    <p class="mb-4">{% trans "If you know the last hash (e.g., from a backup or AEAT portal), enter it manually." %}</p>
+
+                    <ion-item class="mb-4">
+                        <ion-label position="stacked">{% trans "Last Known Hash" %}</ion-label>
+                        <ion-input
+                            id="manual-hash-input"
+                            type="text"
+                            placeholder="{% trans 'Enter 64-character SHA-256 hash' %}"
+                            maxlength="64"
+                            style="font-family: monospace; font-size: 12px;">
+                        </ion-input>
+                    </ion-item>
+
+                    <p class="text-xs mb-4" style="color: var(--ion-color-medium);">
+                        <ion-icon name="information-circle-outline"></ion-icon>
+                        {% trans "The hash must be 64 uppercase hexadecimal characters (A-F, 0-9)" %}
+                    </p>
+
+                    <ion-button id="manual-recover-btn" expand="block" color="warning" onclick="recoverManual()">
+                        <ion-icon slot="start" name="save-outline"></ion-icon>
+                        {% trans "Apply Hash" %}
+                    </ion-button>
+
+                    <div id="manual-result" class="mt-4 p-3 rounded-lg" style="display: none;"></div>
+                </ion-card-content>
+            </ion-card>
+        </div>
+
+        <!-- Recovery History -->
+        {% if chain_status and chain_status.recovery_points %}
+        <ion-card class="m-0 mt-6">
+            <ion-card-header>
+                <ion-card-title>
+                    <ion-icon name="time-outline" class="mr-2"></ion-icon>
+                    {% trans "Recovery History" %}
+                </ion-card-title>
+            </ion-card-header>
+            <ion-card-content class="p-0">
+                <ion-list>
+                    {% for point in chain_status.recovery_points %}
+                    <ion-item>
+                        <ion-label>
+                            <h3>{{ point.recovered_at|date:"Y-m-d H:i" }}</h3>
+                            <p class="font-mono text-xs">{{ point.recovered_hash|truncatechars:20 }}</p>
+                            <p class="text-xs" style="color: var(--ion-color-medium);">
+                                {% trans "Source" %}: {{ point.source }}
+                                {% if point.recovered_invoice %} | {{ point.recovered_invoice }}{% endif %}
+                            </p>
+                        </ion-label>
+                    </ion-item>
+                    {% endfor %}
+                </ion-list>
+            </ion-card-content>
+        </ion-card>
+        {% endif %}
+    {% endfill %}
+{% endcomponent %}
 
 <script>
-window.recoveryApp = function() {
-    return {
-        loading: false,
-        recovering: false,
-        chainStatus: null,
-        manualHash: '',
-        aeatResult: null,
-        manualResult: null,
+(function() {
+    var recovering = false;
 
-        get isValidHash() {
-            return /^[A-F0-9]{64}$/.test(this.manualHash.toUpperCase());
-        },
+    // Validate hash format
+    function isValidHash(hash) {
+        return /^[A-F0-9]{64}$/.test((hash || '').toUpperCase());
+    }
 
-        async init() {
-            await this.refreshStatus();
-        },
+    // Show toast
+    async function showToast(message, color) {
+        var toast = document.createElement('ion-toast');
+        toast.message = message;
+        toast.duration = 3000;
+        toast.color = color || 'primary';
+        toast.position = 'top';
+        document.body.appendChild(toast);
+        await toast.present();
+    }
 
-        async refreshStatus() {
-            this.loading = true;
-            try {
-                const response = await fetch('{% url "verifactu:chain_status" %}');
-                const data = await response.json();
-                if (data.success) {
-                    this.chainStatus = data;
-                } else {
-                    this.chainStatus = null;
-                }
-            } catch (error) {
-                console.error('Error fetching chain status:', error);
-                this.chainStatus = null;
-            } finally {
-                this.loading = false;
+    // Refresh chain status
+    window.refreshStatus = async function() {
+        var loading = document.getElementById('chain-status-loading');
+        var content = document.getElementById('chain-status-content');
+        var error = document.getElementById('chain-status-error');
+        var btn = document.getElementById('refresh-status-btn');
+
+        loading.style.display = 'block';
+        content.style.display = 'none';
+        error.style.display = 'none';
+        btn.disabled = true;
+
+        try {
+            var response = await fetch('{% url "verifactu:chain_status" %}');
+            var data = await response.json();
+
+            if (data.success) {
+                renderChainStatus(data);
+                loading.style.display = 'none';
+                content.style.display = 'block';
+            } else {
+                loading.style.display = 'none';
+                error.style.display = 'block';
             }
-        },
+        } catch (err) {
+            console.error('Error fetching chain status:', err);
+            loading.style.display = 'none';
+            error.style.display = 'block';
+        } finally {
+            btn.disabled = false;
+        }
+    };
 
-        async recoverFromAEAT() {
-            this.recovering = true;
-            this.aeatResult = null;
-            try {
-                const response = await fetch('{% url "verifactu:recover_from_aeat" %}', {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                    }
-                });
-                this.aeatResult = await response.json();
+    // Render chain status
+    function renderChainStatus(status) {
+        var localBox = document.getElementById('local-status-box');
+        var localInfo = document.getElementById('local-status-info');
+        var aeatBox = document.getElementById('aeat-status-box');
+        var aeatInfo = document.getElementById('aeat-status-info');
+        var syncBox = document.getElementById('sync-status-box');
+        var syncIcon = document.getElementById('sync-status-icon');
+        var syncMessage = document.getElementById('sync-status-message');
+        var gapCount = document.getElementById('sync-gap-count');
 
-                if (this.aeatResult.success) {
-                    await this.refreshStatus();
-                    this.showToast('{% trans "Chain recovered successfully" %}', 'success');
-                } else {
-                    this.showToast(this.aeatResult.error || this.aeatResult.message, 'danger');
-                }
-            } catch (error) {
-                this.aeatResult = { success: false, message: '{% trans "Connection error" %}' };
-                this.showToast('{% trans "Error connecting to AEAT" %}', 'danger');
-            } finally {
-                this.recovering = false;
-            }
-        },
+        // Local status
+        localBox.className = 'p-4 rounded-lg ' + (status.is_synced ? 'bg-success/10' : 'bg-warning/10');
+        if (status.local_last_invoice) {
+            localInfo.innerHTML = '<p class="text-sm">{% trans "Last Invoice" %}: <strong>' + status.local_last_invoice + '</strong></p>' +
+                '<p class="text-xs font-mono mt-1 break-all" style="color: var(--ion-color-medium);">' + (status.local_last_hash || 'No hash') + '</p>';
+        } else {
+            localInfo.innerHTML = '<p class="text-sm" style="color: var(--ion-color-medium);">{% trans "No local records" %}</p>';
+        }
 
-        async recoverManual() {
-            if (!this.isValidHash) {
-                this.showToast('{% trans "Invalid hash format" %}', 'warning');
-                return;
-            }
+        // AEAT status
+        aeatBox.className = 'p-4 rounded-lg ' + (status.is_synced ? 'bg-success/10' : 'bg-warning/10');
+        if (status.aeat_last_invoice) {
+            aeatInfo.innerHTML = '<p class="text-sm">{% trans "Last Invoice" %}: <strong>' + status.aeat_last_invoice + '</strong></p>' +
+                '<p class="text-xs font-mono mt-1 break-all" style="color: var(--ion-color-medium);">' + (status.aeat_last_hash || 'No hash') + '</p>';
+        } else {
+            aeatInfo.innerHTML = '<p class="text-sm" style="color: var(--ion-color-medium);">{% trans "Could not query AEAT" %}</p>';
+        }
 
-            this.recovering = true;
-            this.manualResult = null;
-            try {
-                const response = await fetch('{% url "verifactu:recover_manual" %}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                    },
-                    body: JSON.stringify({ hash: this.manualHash.toUpperCase() })
-                });
-                this.manualResult = await response.json();
+        // Sync status
+        syncBox.className = 'mt-4 p-4 rounded-lg ' + (status.is_synced ? 'bg-success/20' : 'bg-danger/20');
+        syncIcon.name = status.is_synced ? 'checkmark-circle' : 'alert-circle';
+        syncIcon.color = status.is_synced ? 'success' : 'danger';
+        syncMessage.textContent = status.message || '';
 
-                if (this.manualResult.success) {
-                    await this.refreshStatus();
-                    this.manualHash = '';
-                    this.showToast('{% trans "Hash applied successfully" %}', 'success');
-                } else {
-                    this.showToast(this.manualResult.error || this.manualResult.message, 'danger');
-                }
-            } catch (error) {
-                this.manualResult = { success: false, message: '{% trans "Error applying hash" %}' };
-                this.showToast('{% trans "Error applying hash" %}', 'danger');
-            } finally {
-                this.recovering = false;
-            }
-        },
-
-        async showToast(message, color = 'primary') {
-            const toast = document.createElement('ion-toast');
-            toast.message = message;
-            toast.duration = 3000;
-            toast.color = color;
-            toast.position = 'top';
-            document.body.appendChild(toast);
-            await toast.present();
+        if (status.gap_count > 0) {
+            gapCount.style.display = 'block';
+            gapCount.innerHTML = '{% trans "Missing invoices" %}: ' + status.gap_count;
+        } else {
+            gapCount.style.display = 'none';
         }
     }
-};
 
-// Using 'afterSettle' to ensure scripts have executed before Alpine init
-document.addEventListener('htmx:afterSettle', function(event) {
-    if (event.detail.target.id === 'dashboard-content') {
-        const alpineEl = event.detail.target.querySelector('[x-data]');
-        if (alpineEl && !alpineEl._x_dataStack) {
-            Alpine.initTree(alpineEl);
+    // Recover from AEAT
+    window.recoverFromAEAT = async function() {
+        if (recovering) return;
+        recovering = true;
+
+        var btn = document.getElementById('aeat-recover-btn');
+        var resultDiv = document.getElementById('aeat-result');
+
+        btn.disabled = true;
+        btn.innerHTML = '<ion-spinner name="crescent" slot="start"></ion-spinner> {% trans "Querying..." %}';
+        resultDiv.style.display = 'none';
+
+        try {
+            var response = await fetch('{% url "verifactu:recover_from_aeat" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                }
+            });
+            var data = await response.json();
+
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'mt-4 p-3 rounded-lg ' + (data.success ? 'bg-success/20' : 'bg-danger/20');
+
+            var html = '<p class="text-sm font-semibold">' + (data.message || '') + '</p>';
+            if (data.recovered_hash) {
+                html += '<div class="mt-2"><p class="text-xs" style="color: var(--ion-color-medium);">{% trans "Recovered hash" %}:</p>' +
+                    '<p class="text-xs font-mono break-all">' + data.recovered_hash + '</p></div>';
+            }
+            resultDiv.innerHTML = html;
+
+            if (data.success) {
+                showToast('{% trans "Chain recovered successfully" %}', 'success');
+                await refreshStatus();
+            } else {
+                showToast(data.error || data.message, 'danger');
+            }
+        } catch (err) {
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'mt-4 p-3 rounded-lg bg-danger/20';
+            resultDiv.innerHTML = '<p class="text-sm font-semibold">{% trans "Connection error" %}</p>';
+            showToast('{% trans "Error connecting to AEAT" %}', 'danger');
+        } finally {
+            recovering = false;
+            btn.disabled = false;
+            btn.innerHTML = '<ion-icon slot="start" name="download-outline"></ion-icon> {% trans "Query AEAT" %}';
         }
-    }
-});
+    };
+
+    // Recover manually
+    window.recoverManual = async function() {
+        var hashInput = document.getElementById('manual-hash-input');
+        var hash = (hashInput.value || '').toUpperCase();
+
+        if (!isValidHash(hash)) {
+            showToast('{% trans "Invalid hash format" %}', 'warning');
+            return;
+        }
+
+        if (recovering) return;
+        recovering = true;
+
+        var btn = document.getElementById('manual-recover-btn');
+        var resultDiv = document.getElementById('manual-result');
+
+        btn.disabled = true;
+        btn.innerHTML = '<ion-spinner name="crescent" slot="start"></ion-spinner> {% trans "Applying..." %}';
+        resultDiv.style.display = 'none';
+
+        try {
+            var response = await fetch('{% url "verifactu:recover_manual" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify({ hash: hash })
+            });
+            var data = await response.json();
+
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'mt-4 p-3 rounded-lg ' + (data.success ? 'bg-success/20' : 'bg-danger/20');
+            resultDiv.innerHTML = '<p class="text-sm font-semibold">' + (data.message || '') + '</p>';
+
+            if (data.success) {
+                hashInput.value = '';
+                showToast('{% trans "Hash applied successfully" %}', 'success');
+                await refreshStatus();
+            } else {
+                showToast(data.error || data.message, 'danger');
+            }
+        } catch (err) {
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'mt-4 p-3 rounded-lg bg-danger/20';
+            resultDiv.innerHTML = '<p class="text-sm font-semibold">{% trans "Error applying hash" %}</p>';
+            showToast('{% trans "Error applying hash" %}', 'danger');
+        } finally {
+            recovering = false;
+            btn.disabled = false;
+            btn.innerHTML = '<ion-icon slot="start" name="save-outline"></ion-icon> {% trans "Apply Hash" %}';
+        }
+    };
+
+    // Initialize on load
+    refreshStatus();
+})();
 </script>

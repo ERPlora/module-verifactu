@@ -1,151 +1,151 @@
 {% load i18n ui component_tags %}
 
-{% if request.htmx %}
-{% component "tabbar" module_id="verifactu" current_view="dashboard" oob=True %}{% endcomponent %}
-{% endif %}
+{% component "page"
+    title="Verifactu"
+    subtitle=_("Spanish electronic invoicing compliance")
+    module_id="verifactu"
+    tabbar_view="dashboard" %}
 
-{% ui_page_header title="Verifactu" subtitle=_("Spanish electronic invoicing compliance") %}
-
-<div class="ion-padding">
-
-    <!-- Demo Mode Banner -->
-    {% if demo_mode %}
-    <div class="mb-md p-sm rounded-md d-flex align-center gap-sm" style="background: var(--ion-color-warning-tint);">
-        <ion-icon name="flask-outline" color="warning" style="font-size: 24px;"></ion-icon>
-        <div>
-            <span class="fw-medium" style="color: var(--ion-color-warning-shade);">{% trans "Demo Mode Active" %}</span>
-            <p class="fs-xs m-0" style="color: var(--ion-color-warning-shade);">
-                {% trans "AEAT connections are simulated. Set VERIFACTU_DEMO_MODE=false to disable." %}
-            </p>
+    {% fill "content" %}
+        <!-- Demo Mode Banner -->
+        {% if demo_mode %}
+        <div class="mb-md p-sm rounded-md d-flex align-center gap-sm" style="background: var(--ion-color-warning-tint);">
+            <ion-icon name="flask-outline" color="warning" style="font-size: 24px;"></ion-icon>
+            <div>
+                <span class="fw-medium" style="color: var(--ion-color-warning-shade);">{% trans "Demo Mode Active" %}</span>
+                <p class="fs-xs m-0" style="color: var(--ion-color-warning-shade);">
+                    {% trans "AEAT connections are simulated. Set VERIFACTU_DEMO_MODE=false to disable." %}
+                </p>
+            </div>
         </div>
-    </div>
-    {% endif %}
+        {% endif %}
 
-    <!-- Status Banner -->
-    {% if not is_configured %}
-    <ion-card class="m-0 mb-md" color="warning">
-        <ion-card-content class="p-sm">
-            <div class="d-flex align-center gap-sm">
-                <ion-icon name="warning-outline" style="font-size: 24px;"></ion-icon>
-                <div class="flex-1">
-                    <div class="fw-semibold">{% trans "Configuration Required" %}</div>
-                    <div class="fs-sm">{% trans "Please configure your certificate and software information in Settings." %}</div>
+        <!-- Status Banner -->
+        {% if not is_configured %}
+        <ion-card class="m-0 mb-md" color="warning">
+            <ion-card-content class="p-sm">
+                <div class="d-flex align-center gap-sm">
+                    <ion-icon name="warning-outline" style="font-size: 24px;"></ion-icon>
+                    <div class="flex-1">
+                        <div class="fw-semibold">{% trans "Configuration Required" %}</div>
+                        <div class="fs-sm">{% trans "Please configure your certificate and software information in Settings." %}</div>
+                    </div>
+                    <ion-button size="small" fill="outline" color="dark"
+                        hx-get="{% url 'verifactu:settings' %}"
+                        hx-target="#main-content-area"
+                        hx-push-url="true">
+                        {% trans "Configure" %}
+                    </ion-button>
                 </div>
-                <ion-button size="small" fill="outline" color="dark"
-                    hx-get="{% url 'verifactu:settings' %}"
+            </ion-card-content>
+        </ion-card>
+        {% endif %}
+
+        <!-- System Status -->
+        {% ui_card css_class="mb-md" %}
+            <div class="d-flex align-center justify-between">
+                <div class="d-flex align-center gap-sm">
+                    {% if status.mode_value == 'normal' %}
+                    <div class="rounded-full bg-success" style="width: 12px; height: 12px;"></div>
+                    {% elif status.mode_value == 'offline' %}
+                    <div class="rounded-full bg-danger" style="width: 12px; height: 12px;"></div>
+                    {% elif status.mode_value == 'degraded' %}
+                    <div class="rounded-full bg-warning" style="width: 12px; height: 12px;"></div>
+                    {% else %}
+                    <div class="rounded-full bg-primary" style="width: 12px; height: 12px;"></div>
+                    {% endif %}
+                    <div>
+                        <div class="fw-semibold">{{ status.message }}</div>
+                        {% if status.queue_size > 0 %}
+                        <div class="fs-sm text-secondary">
+                            {{ status.queue_size }} {% trans "records in queue" %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <ion-button size="small" fill="clear"
+                    hx-get="{% url 'verifactu:contingency' %}"
                     hx-target="#main-content-area"
                     hx-push-url="true">
-                    {% trans "Configure" %}
+                    {% trans "Details" %}
+                    <ion-icon slot="end" name="chevron-forward-outline"></ion-icon>
                 </ion-button>
             </div>
-        </ion-card-content>
-    </ion-card>
-    {% endif %}
+        {% endui_card %}
 
-    <!-- System Status -->
-    {% ui_card css_class="mb-md" %}
-        <div class="d-flex align-center justify-between">
-            <div class="d-flex align-center gap-sm">
-                {% if status.mode_value == 'normal' %}
-                <div class="rounded-full bg-success" style="width: 12px; height: 12px;"></div>
-                {% elif status.mode_value == 'offline' %}
-                <div class="rounded-full bg-danger" style="width: 12px; height: 12px;"></div>
-                {% elif status.mode_value == 'degraded' %}
-                <div class="rounded-full bg-warning" style="width: 12px; height: 12px;"></div>
-                {% else %}
-                <div class="rounded-full bg-primary" style="width: 12px; height: 12px;"></div>
-                {% endif %}
-                <div>
-                    <div class="fw-semibold">{{ status.message }}</div>
-                    {% if status.queue_size > 0 %}
-                    <div class="fs-sm text-secondary">
-                        {{ status.queue_size }} {% trans "records in queue" %}
-                    </div>
-                    {% endif %}
-                </div>
+        <!-- Stats Cards -->
+        <ion-row class="mb-md">
+            <ion-col size="6" size-md="3">
+                {% ui_stat_card value=total_records label=_("Total Records") icon="document-text-outline" color="primary" %}
+            </ion-col>
+            <ion-col size="6" size-md="3">
+                {% ui_stat_card value=today_records label=_("Today") icon="today-outline" color="success" %}
+            </ion-col>
+            <ion-col size="6" size-md="3">
+                {% ui_stat_card value=month_records label=_("This Month") icon="calendar-outline" color="tertiary" %}
+            </ion-col>
+            <ion-col size="6" size-md="3">
+                {% ui_stat_card value=pending_records label=_("Pending") icon="time-outline" color="warning" %}
+            </ion-col>
+        </ion-row>
+
+        <!-- Recent Records -->
+        {% ui_card css_class="mb-md" %}
+            <div class="d-flex justify-between align-center mb-sm">
+                <h3 class="fw-semibold m-0">{% trans "Recent Records" %}</h3>
+                <ion-button size="small" fill="clear"
+                    hx-get="{% url 'verifactu:records' %}"
+                    hx-target="#main-content-area"
+                    hx-push-url="true">
+                    {% trans "View All" %}
+                </ion-button>
             </div>
-            <ion-button size="small" fill="clear"
-                hx-get="{% url 'verifactu:contingency' %}"
-                hx-target="#main-content-area"
-                hx-push-url="true">
-                {% trans "Details" %}
-                <ion-icon slot="end" name="chevron-forward-outline"></ion-icon>
-            </ion-button>
-        </div>
-    {% endui_card %}
+            {% if recent_records %}
+            <ion-list lines="full">
+                {% for record in recent_records %}
+                <ion-item button
+                    hx-get="{% url 'verifactu:record_detail' record.id %}"
+                    hx-target="#main-content-area"
+                    hx-push-url="true">
+                    <ion-icon slot="start" name="{% if record.record_type == 'alta' %}add-circle-outline{% else %}remove-circle-outline{% endif %}"
+                        color="{% if record.record_type == 'alta' %}success{% else %}danger{% endif %}"></ion-icon>
+                    <ion-label>
+                        <h3>{{ record.invoice_number }}</h3>
+                        <p>{{ record.generation_timestamp|date:"Y-m-d H:i" }}</p>
+                    </ion-label>
+                    {% if record.status == 'transmitted' or record.status == 'accepted' %}
+                    <ion-badge color="success" slot="end">{% trans "Sent" %}</ion-badge>
+                    {% elif record.status == 'pending' %}
+                    <ion-badge color="warning" slot="end">{% trans "Pending" %}</ion-badge>
+                    {% elif record.status == 'error' or record.status == 'rejected' %}
+                    <ion-badge color="danger" slot="end">{% trans "Error" %}</ion-badge>
+                    {% endif %}
+                </ion-item>
+                {% endfor %}
+            </ion-list>
+            {% else %}
+            {% ui_empty_state title=_("No records yet") icon="document-text-outline" %}
+            {% endif %}
+        {% endui_card %}
 
-    <!-- Stats Cards -->
-    <ion-row class="mb-md">
-        <ion-col size="6" size-md="3">
-            {% ui_stat_card value=total_records label=_("Total Records") icon="document-text-outline" color="primary" %}
-        </ion-col>
-        <ion-col size="6" size-md="3">
-            {% ui_stat_card value=today_records label=_("Today") icon="today-outline" color="success" %}
-        </ion-col>
-        <ion-col size="6" size-md="3">
-            {% ui_stat_card value=month_records label=_("This Month") icon="calendar-outline" color="tertiary" %}
-        </ion-col>
-        <ion-col size="6" size-md="3">
-            {% ui_stat_card value=pending_records label=_("Pending") icon="time-outline" color="warning" %}
-        </ion-col>
-    </ion-row>
-
-    <!-- Recent Records -->
-    {% ui_card css_class="mb-md" %}
-        <div class="d-flex justify-between align-center mb-sm">
-            <h3 class="fw-semibold m-0">{% trans "Recent Records" %}</h3>
-            <ion-button size="small" fill="clear"
-                hx-get="{% url 'verifactu:records' %}"
-                hx-target="#main-content-area"
-                hx-push-url="true">
-                {% trans "View All" %}
-            </ion-button>
-        </div>
-        {% if recent_records %}
-        <ion-list lines="full">
-            {% for record in recent_records %}
-            <ion-item button
-                hx-get="{% url 'verifactu:record_detail' record.id %}"
-                hx-target="#main-content-area"
-                hx-push-url="true">
-                <ion-icon slot="start" name="{% if record.record_type == 'alta' %}add-circle-outline{% else %}remove-circle-outline{% endif %}"
-                    color="{% if record.record_type == 'alta' %}success{% else %}danger{% endif %}"></ion-icon>
-                <ion-label>
-                    <h3>{{ record.invoice_number }}</h3>
-                    <p>{{ record.generation_timestamp|date:"Y-m-d H:i" }}</p>
-                </ion-label>
-                {% if record.status == 'transmitted' or record.status == 'accepted' %}
-                <ion-badge color="success" slot="end">{% trans "Sent" %}</ion-badge>
-                {% elif record.status == 'pending' %}
-                <ion-badge color="warning" slot="end">{% trans "Pending" %}</ion-badge>
-                {% elif record.status == 'error' or record.status == 'rejected' %}
-                <ion-badge color="danger" slot="end">{% trans "Error" %}</ion-badge>
-                {% endif %}
-            </ion-item>
-            {% endfor %}
-        </ion-list>
-        {% else %}
-        {% ui_empty_state title=_("No records yet") icon="document-text-outline" %}
+        <!-- Recent Alerts -->
+        {% if recent_events %}
+        {% ui_card title=_("Recent Alerts") %}
+            <ion-list lines="full">
+                {% for event in recent_events %}
+                <ion-item>
+                    <ion-icon slot="start"
+                        name="{% if event.event_type == 'error' %}alert-circle-outline{% else %}warning-outline{% endif %}"
+                        color="{% if event.event_type == 'error' %}danger{% else %}warning{% endif %}">
+                    </ion-icon>
+                    <ion-label>
+                        <h3>{{ event.description|truncatewords:10 }}</h3>
+                        <p>{{ event.timestamp|date:"Y-m-d H:i" }}</p>
+                    </ion-label>
+                </ion-item>
+                {% endfor %}
+            </ion-list>
+        {% endui_card %}
         {% endif %}
-    {% endui_card %}
-
-    <!-- Recent Alerts -->
-    {% if recent_events %}
-    {% ui_card title=_("Recent Alerts") %}
-        <ion-list lines="full">
-            {% for event in recent_events %}
-            <ion-item>
-                <ion-icon slot="start"
-                    name="{% if event.event_type == 'error' %}alert-circle-outline{% else %}warning-outline{% endif %}"
-                    color="{% if event.event_type == 'error' %}danger{% else %}warning{% endif %}">
-                </ion-icon>
-                <ion-label>
-                    <h3>{{ event.description|truncatewords:10 }}</h3>
-                    <p>{{ event.timestamp|date:"Y-m-d H:i" }}</p>
-                </ion-label>
-            </ion-item>
-            {% endfor %}
-        </ion-list>
-    {% endui_card %}
-    {% endif %}
-</div>
+    {% endfill %}
+{% endcomponent %}

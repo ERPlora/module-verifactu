@@ -1,74 +1,74 @@
 {% load static i18n ui component_tags %}
 
-{% if request.htmx %}
-{% component "tabbar" module_id="verifactu" current_view="records" oob=True %}{% endcomponent %}
-{% endif %}
+{% component "page"
+    title=_("Verifactu Records")
+    subtitle=_("All invoice records submitted to AEAT")
+    module_id="verifactu"
+    tabbar_view="records" %}
 
-{% ui_page_header title=_("Verifactu Records") subtitle=_("All invoice records submitted to AEAT") %}
+    {% fill "content" %}
+        <!-- Filters -->
+        <ion-card class="m-0 mb-4">
+            <ion-card-content>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <ion-item>
+                        <ion-input
+                            label="{% trans 'Search' %}"
+                            label-placement="stacked"
+                            placeholder="{% trans 'Invoice number, NIF...' %}"
+                            value="{{ search }}"
+                            name="search"
+                            hx-get="{% url 'verifactu:records' %}"
+                            hx-target="#records-table-container"
+                            hx-trigger="input changed delay:500ms"
+                            hx-include="[name='status'], [name='type']">
+                        </ion-input>
+                    </ion-item>
+                    <ion-item>
+                        <ion-select
+                            label="{% trans 'Status' %}"
+                            label-placement="stacked"
+                            placeholder="{% trans 'All' %}"
+                            name="status"
+                            value="{{ status_filter }}"
+                            hx-get="{% url 'verifactu:records' %}"
+                            hx-target="#records-table-container"
+                            hx-trigger="ionChange"
+                            hx-include="[name='search'], [name='type']">
+                            <ion-select-option value="">{% trans "All" %}</ion-select-option>
+                            {% for value, label in status_choices %}
+                            <ion-select-option value="{{ value }}">{{ label }}</ion-select-option>
+                            {% endfor %}
+                        </ion-select>
+                    </ion-item>
+                    <ion-item>
+                        <ion-select
+                            label="{% trans 'Type' %}"
+                            label-placement="stacked"
+                            placeholder="{% trans 'All' %}"
+                            name="type"
+                            value="{{ record_type }}"
+                            hx-get="{% url 'verifactu:records' %}"
+                            hx-target="#records-table-container"
+                            hx-trigger="ionChange"
+                            hx-include="[name='search'], [name='status']">
+                            <ion-select-option value="">{% trans "All" %}</ion-select-option>
+                            {% for value, label in type_choices %}
+                            <ion-select-option value="{{ value }}">{{ label }}</ion-select-option>
+                            {% endfor %}
+                        </ion-select>
+                    </ion-item>
+                </div>
+            </ion-card-content>
+        </ion-card>
 
-<div class="ion-padding">
-
-    <!-- Filters -->
-    <ion-card class="m-0 mb-4">
-        <ion-card-content>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <ion-item>
-                    <ion-input
-                        label="{% trans 'Search' %}"
-                        label-placement="stacked"
-                        placeholder="{% trans 'Invoice number, NIF...' %}"
-                        value="{{ search }}"
-                        name="search"
-                        hx-get="{% url 'verifactu:records' %}"
-                        hx-target="#records-table-container"
-                        hx-trigger="input changed delay:500ms"
-                        hx-include="[name='status'], [name='type']">
-                    </ion-input>
-                </ion-item>
-                <ion-item>
-                    <ion-select
-                        label="{% trans 'Status' %}"
-                        label-placement="stacked"
-                        placeholder="{% trans 'All' %}"
-                        name="status"
-                        value="{{ status_filter }}"
-                        hx-get="{% url 'verifactu:records' %}"
-                        hx-target="#records-table-container"
-                        hx-trigger="ionChange"
-                        hx-include="[name='search'], [name='type']">
-                        <ion-select-option value="">{% trans "All" %}</ion-select-option>
-                        {% for value, label in status_choices %}
-                        <ion-select-option value="{{ value }}">{{ label }}</ion-select-option>
-                        {% endfor %}
-                    </ion-select>
-                </ion-item>
-                <ion-item>
-                    <ion-select
-                        label="{% trans 'Type' %}"
-                        label-placement="stacked"
-                        placeholder="{% trans 'All' %}"
-                        name="type"
-                        value="{{ record_type }}"
-                        hx-get="{% url 'verifactu:records' %}"
-                        hx-target="#records-table-container"
-                        hx-trigger="ionChange"
-                        hx-include="[name='search'], [name='status']">
-                        <ion-select-option value="">{% trans "All" %}</ion-select-option>
-                        {% for value, label in type_choices %}
-                        <ion-select-option value="{{ value }}">{{ label }}</ion-select-option>
-                        {% endfor %}
-                    </ion-select>
-                </ion-item>
-            </div>
-        </ion-card-content>
-    </ion-card>
-
-    <!-- Records Table -->
-    <ion-card class="m-0">
-        <ion-card-content class="p-0">
-            <div id="records-table-container">
-                {% include "verifactu/partials/records_table.html" %}
-            </div>
-        </ion-card-content>
-    </ion-card>
-</div>
+        <!-- Records Table -->
+        <ion-card class="m-0">
+            <ion-card-content class="p-0">
+                <div id="records-table-container">
+                    {% include "verifactu/partials/records_table.html" %}
+                </div>
+            </ion-card-content>
+        </ion-card>
+    {% endfill %}
+{% endcomponent %}

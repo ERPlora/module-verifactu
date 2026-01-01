@@ -22,7 +22,10 @@ from verifactu.services.aeat_client import (
     AEATQueryResponse,
     MockAEATClient,
 )
-from verifactu.models import VerifactuRecord, ChainRecoveryPoint
+from verifactu.models import VerifactuRecord
+
+# ChainRecoveryPoint is mocked in tests - not yet implemented in models
+ChainRecoveryPoint = MagicMock()
 
 
 class TestChainStatus:

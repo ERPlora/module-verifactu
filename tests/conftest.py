@@ -42,3 +42,46 @@ from decimal import Decimal
 from django.test import Client
 
 from apps.accounts.models import LocalUser
+from apps.configuration.models import StoreConfig
+
+
+@pytest.fixture
+def client():
+    """Create test client."""
+    return Client()
+
+
+@pytest.fixture
+def local_user(db):
+    """Create a test user."""
+    from django.contrib.auth.hashers import make_password
+    return LocalUser.objects.create(
+        name="Test User",
+        email="test@example.com",
+        pin_hash=make_password("1234"),
+        role="admin",
+        is_active=True
+    )
+
+
+@pytest.fixture
+def store_config(db):
+    """Create store configuration (marks hub as configured)."""
+    config = StoreConfig.get_config()
+    config.is_configured = True
+    config.name = 'Test Store'
+    config.save()
+    return config
+
+
+@pytest.fixture
+def auth_client(client, local_user, store_config):
+    """Create authenticated test client with session."""
+    session = client.session
+    session['local_user_id'] = str(local_user.id)
+    session['user_name'] = local_user.name
+    session['user_email'] = local_user.email
+    session['user_role'] = local_user.role
+    session['store_config_checked'] = True
+    session.save()
+    return client

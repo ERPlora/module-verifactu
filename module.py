@@ -12,7 +12,19 @@ MODULE_ID = "verifactu"
 MODULE_NAME = _("Verifactu")
 MODULE_ICON = "shield-checkmark-outline"
 MODULE_VERSION = "1.0.0"
-MODULE_CATEGORY = "legal"
+MODULE_CATEGORY = "localization"  # Changed from "legal" to more specific category
+
+# Target Industries (business verticals this module is designed for)
+# Note: Verifactu is mandatory for all businesses in Spain
+MODULE_INDUSTRIES = [
+    "retail",       # Retail stores
+    "restaurant",   # Restaurants
+    "bar",          # Bars & pubs
+    "cafe",         # Cafes & bakeries
+    "salon",        # Beauty & wellness
+    "professional", # Professional services
+    "wholesale",    # Wholesale distributors
+]
 
 # Sidebar Menu Configuration
 MENU = {

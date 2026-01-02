@@ -21,8 +21,8 @@ MODULE_INDUSTRIES = [
     "restaurant",   # Restaurants
     "bar",          # Bars & pubs
     "cafe",         # Cafes & bakeries
-    "salon",        # Beauty & wellness
-    "professional", # Professional services
+    "beauty",       # Beauty & wellness
+    "consulting",   # Professional services
     "wholesale",    # Wholesale distributors
 ]
 

@@ -13,7 +13,7 @@
         <ion-card class="m-0 mb-6">
             <ion-card-header>
                 <ion-card-title>
-                    <ion-icon name="help-circle-outline" class="mr-2"></ion-icon>
+                    {% icon "help-circle-outline" css_class="mr-2" %}
                     {% trans "What is hash chain recovery?" %}
                 </ion-card-title>
             </ion-card-header>
@@ -25,33 +25,33 @@
                         <div class="flex items-center gap-4 min-w-max">
                             <div class="text-center">
                                 <div class="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mb-1">
-                                    <ion-icon name="document-outline" class="text-primary text-xl"></ion-icon>
+                                    {% icon "document-outline" css_class="text-primary text-xl" %}
                                 </div>
                                 <div class="text-xs">F1</div>
                                 <div class="text-xs text-gray-500">Hash: AAA</div>
                             </div>
-                            <ion-icon name="arrow-forward" class="text-gray-400"></ion-icon>
+                            {% icon "arrow-forward" css_class="text-gray-400" %}
                             <div class="text-center">
                                 <div class="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mb-1">
-                                    <ion-icon name="document-outline" class="text-primary text-xl"></ion-icon>
+                                    {% icon "document-outline" css_class="text-primary text-xl" %}
                                 </div>
                                 <div class="text-xs">F2</div>
                                 <div class="text-xs text-gray-500">Hash: BBB</div>
                                 <div class="text-xs text-primary">uses AAA</div>
                             </div>
-                            <ion-icon name="arrow-forward" class="text-gray-400"></ion-icon>
+                            {% icon "arrow-forward" css_class="text-gray-400" %}
                             <div class="text-center">
                                 <div class="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mb-1">
-                                    <ion-icon name="document-outline" class="text-primary text-xl"></ion-icon>
+                                    {% icon "document-outline" css_class="text-primary text-xl" %}
                                 </div>
                                 <div class="text-xs">F3</div>
                                 <div class="text-xs text-gray-500">Hash: CCC</div>
                                 <div class="text-xs text-primary">uses BBB</div>
                             </div>
-                            <ion-icon name="arrow-forward" class="text-gray-400"></ion-icon>
+                            {% icon "arrow-forward" css_class="text-gray-400" %}
                             <div class="text-center">
                                 <div class="w-12 h-12 rounded-full bg-warning/20 flex items-center justify-center mb-1">
-                                    <ion-icon name="help-outline" class="text-warning text-xl"></ion-icon>
+                                    {% icon "help-outline" css_class="text-warning text-xl" %}
                                 </div>
                                 <div class="text-xs">F4?</div>
                                 <div class="text-xs text-warning">needs CCC</div>
@@ -70,7 +70,7 @@
         <ion-card class="m-0 mb-6">
             <ion-card-header>
                 <ion-card-title>
-                    <ion-icon name="link-outline" class="mr-2"></ion-icon>
+                    {% icon "link-outline" css_class="mr-2" %}
                     {% trans "Current Chain Status" %}
                 </ion-card-title>
             </ion-card-header>
@@ -85,7 +85,7 @@
                         <!-- Local Status -->
                         <div id="local-status-box" class="p-4 rounded-lg">
                             <h4 class="font-semibold mb-2 flex items-center gap-2">
-                                <ion-icon name="desktop-outline"></ion-icon>
+                                {% icon "desktop-outline" %}
                                 {% trans "Local (Your Database)" %}
                             </h4>
                             <div id="local-status-info"></div>
@@ -94,7 +94,7 @@
                         <!-- AEAT Status -->
                         <div id="aeat-status-box" class="p-4 rounded-lg">
                             <h4 class="font-semibold mb-2 flex items-center gap-2">
-                                <ion-icon name="cloud-outline"></ion-icon>
+                                {% icon "cloud-outline" %}
                                 {% trans "AEAT (Tax Agency)" %}
                             </h4>
                             <div id="aeat-status-info"></div>
@@ -114,13 +114,13 @@
                 </div>
 
                 <div id="chain-status-error" class="text-center py-4" style="display: none;">
-                    <ion-icon name="warning-outline" class="text-4xl text-warning"></ion-icon>
+                    {% icon "warning-outline" css_class="text-4xl text-warning" %}
                     <p class="mt-2">{% trans "Could not determine chain status" %}</p>
                     <p class="text-sm" style="color: var(--ion-color-medium);">{% trans "Make sure a NIF is configured in Settings" %}</p>
                 </div>
 
                 <ion-button id="refresh-status-btn" class="mt-4" expand="block" fill="outline" onclick="refreshStatus()">
-                    <ion-icon slot="start" name="refresh-outline"></ion-icon>
+                    {% icon "refresh-outline" %}
                     {% trans "Refresh Status" %}
                 </ion-button>
             </ion-card-content>
@@ -132,7 +132,7 @@
             <ion-card class="m-0">
                 <ion-card-header>
                     <ion-card-title>
-                        <ion-icon name="cloud-download-outline" class="mr-2 text-primary"></ion-icon>
+                        {% icon "cloud-download-outline" css_class="mr-2 text-primary" %}
                         {% trans "Automatic Recovery" %}
                     </ion-card-title>
                     <ion-card-subtitle>{% trans "Recommended" %}</ion-card-subtitle>
@@ -141,7 +141,7 @@
                     <p class="mb-4">{% trans "Query AEAT to get the last hash automatically. This is the safest option." %}</p>
 
                     <ion-button id="aeat-recover-btn" expand="block" onclick="recoverFromAEAT()" color="success">
-                        <ion-icon slot="start" name="download-outline"></ion-icon>
+                        {% icon "download-outline" %}
                         {% trans "Query AEAT" %}
                     </ion-button>
 
@@ -153,7 +153,7 @@
             <ion-card class="m-0">
                 <ion-card-header>
                     <ion-card-title>
-                        <ion-icon name="create-outline" class="mr-2 text-warning"></ion-icon>
+                        {% icon "create-outline" css_class="mr-2 text-warning" %}
                         {% trans "Manual Recovery" %}
                     </ion-card-title>
                     <ion-card-subtitle>{% trans "Advanced" %}</ion-card-subtitle>
@@ -173,12 +173,12 @@
                     </ion-item>
 
                     <p class="text-xs mb-4" style="color: var(--ion-color-medium);">
-                        <ion-icon name="information-circle-outline"></ion-icon>
+                        {% icon "information-circle-outline" %}
                         {% trans "The hash must be 64 uppercase hexadecimal characters (A-F, 0-9)" %}
                     </p>
 
                     <ion-button id="manual-recover-btn" expand="block" color="warning" onclick="recoverManual()">
-                        <ion-icon slot="start" name="save-outline"></ion-icon>
+                        {% icon "save-outline" %}
                         {% trans "Apply Hash" %}
                     </ion-button>
 
@@ -192,7 +192,7 @@
         <ion-card class="m-0 mt-6">
             <ion-card-header>
                 <ion-card-title>
-                    <ion-icon name="time-outline" class="mr-2"></ion-icon>
+                    {% icon "time-outline" css_class="mr-2" %}
                     {% trans "Recovery History" %}
                 </ion-card-title>
             </ion-card-header>
@@ -358,7 +358,7 @@
         } finally {
             recovering = false;
             btn.disabled = false;
-            btn.innerHTML = '<ion-icon slot="start" name="download-outline"></ion-icon> {% trans "Query AEAT" %}';
+            btn.innerHTML = '{% icon "download-outline" %} {% trans "Query AEAT" %}';
         }
     };
 
@@ -412,7 +412,7 @@
         } finally {
             recovering = false;
             btn.disabled = false;
-            btn.innerHTML = '<ion-icon slot="start" name="save-outline"></ion-icon> {% trans "Apply Hash" %}';
+            btn.innerHTML = '{% icon "save-outline" %} {% trans "Apply Hash" %}';
         }
     };
 

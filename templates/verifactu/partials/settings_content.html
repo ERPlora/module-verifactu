@@ -39,7 +39,7 @@
                         <div class="p-md rounded-md" style="{% if config.mode == 'verifactu' %}border: 2px solid var(--ion-color-success); background: var(--ion-color-success-tint);{% else %}border: 2px solid var(--ion-color-medium); opacity: 0.6;{% endif %}">
                             <div class="d-flex align-center gap-sm">
                                 {% if config.mode == 'verifactu' %}
-                                <ion-icon name="checkmark-circle" color="success"></ion-icon>
+                                {% icon "checkmark-circle" css_class="text-success" %}
                                 {% endif %}
                                 <span class="fw-semibold">VERI*FACTU</span>
                             </div>
@@ -48,7 +48,7 @@
                         <div class="p-md rounded-md" style="{% if config.mode == 'no_verifactu' %}border: 2px solid var(--ion-color-success); background: var(--ion-color-success-tint);{% else %}border: 2px solid var(--ion-color-medium); opacity: 0.6;{% endif %}">
                             <div class="d-flex align-center gap-sm">
                                 {% if config.mode == 'no_verifactu' %}
-                                <ion-icon name="checkmark-circle" color="success"></ion-icon>
+                                {% icon "checkmark-circle" css_class="text-success" %}
                                 {% endif %}
                                 <span class="fw-semibold">NO VERI*FACTU</span>
                             </div>
@@ -81,15 +81,15 @@
                             <p class="fs-sm text-secondary mb-sm">{% trans "Real-time transmission to AEAT" %}</p>
                             <ul class="fs-xs text-secondary" style="list-style: none; padding: 0; margin: 0;">
                                 <li class="d-flex align-center gap-xs mb-xs">
-                                    <ion-icon name="checkmark-outline" color="success"></ion-icon>
+                                    {% icon "checkmark-outline" css_class="text-success" %}
                                     {% trans "Automatic submission to AEAT" %}
                                 </li>
                                 <li class="d-flex align-center gap-xs mb-xs">
-                                    <ion-icon name="checkmark-outline" color="success"></ion-icon>
+                                    {% icon "checkmark-outline" css_class="text-success" %}
                                     {% trans "Immediate validation" %}
                                 </li>
                                 <li class="d-flex align-center gap-xs">
-                                    <ion-icon name="checkmark-outline" color="success"></ion-icon>
+                                    {% icon "checkmark-outline" css_class="text-success" %}
                                     {% trans "Higher compliance assurance" %}
                                 </li>
                             </ul>
@@ -109,15 +109,15 @@
                             <p class="fs-sm text-secondary mb-sm">{% trans "Local storage with QR verification" %}</p>
                             <ul class="fs-xs text-secondary" style="list-style: none; padding: 0; margin: 0;">
                                 <li class="d-flex align-center gap-xs mb-xs">
-                                    <ion-icon name="checkmark-outline" color="medium"></ion-icon>
+                                    {% icon "checkmark-outline" css_class="text-medium" %}
                                     {% trans "Records stored locally" %}
                                 </li>
                                 <li class="d-flex align-center gap-xs mb-xs">
-                                    <ion-icon name="checkmark-outline" color="medium"></ion-icon>
+                                    {% icon "checkmark-outline" css_class="text-medium" %}
                                     {% trans "QR code for client verification" %}
                                 </li>
                                 <li class="d-flex align-center gap-xs">
-                                    <ion-icon name="warning-outline" color="warning"></ion-icon>
+                                    {% icon "warning-outline" css_class="text-warning" %}
                                     {% trans "Manual verification required" %}
                                 </li>
                             </ul>
@@ -295,7 +295,7 @@
                         <div class="mt-lg pt-md" style="border-top: 1px solid var(--border-color);">
                             <ion-button type="submit" expand="block" color="success">
                                 <ion-spinner id="certificate-spinner" name="crescent" class="htmx-indicator me-sm"></ion-spinner>
-                                <ion-icon slot="start" name="cloud-upload-outline"></ion-icon>
+                                {% icon "cloud-upload-outline" %}
                                 {% trans "Upload Certificate" %}
                             </ion-button>
                         </div>
@@ -402,7 +402,7 @@
                     </div>
 
                     <ion-button expand="block" fill="outline" id="open-declaration-modal">
-                        <ion-icon slot="start" name="document-text-outline"></ion-icon>
+                        {% icon "document-text-outline" %}
                         {% trans "View Responsible Declaration" %}
                     </ion-button>
 
@@ -423,7 +423,7 @@
                     <ion-title>{% trans "Responsible Declaration" %}</ion-title>
                     <ion-buttons slot="end">
                         <ion-button onclick="document.getElementById('declaration-modal').dismiss()">
-                            <ion-icon slot="icon-only" name="close"></ion-icon>
+                            {% icon "close" %}
                         </ion-button>
                     </ion-buttons>
                 </ion-toolbar>

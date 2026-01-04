@@ -47,19 +47,19 @@
                     <div class="flex items-center gap-4">
                         {% if status.mode_value == 'normal' %}
                         <div class="w-12 h-12 rounded-full bg-success/20 flex items-center justify-center">
-                            <ion-icon name="checkmark-circle" class="text-2xl text-success"></ion-icon>
+                            {% icon "checkmark-circle" css_class="text-2xl text-success" %}
                         </div>
                         {% elif status.mode_value == 'offline' %}
                         <div class="w-12 h-12 rounded-full bg-danger/20 flex items-center justify-center">
-                            <ion-icon name="cloud-offline" class="text-2xl text-danger"></ion-icon>
+                            {% icon "cloud-offline" css_class="text-2xl text-danger" %}
                         </div>
                         {% elif status.mode_value == 'degraded' %}
                         <div class="w-12 h-12 rounded-full bg-warning/20 flex items-center justify-center">
-                            <ion-icon name="warning" class="text-2xl text-warning"></ion-icon>
+                            {% icon "warning" css_class="text-2xl text-warning" %}
                         </div>
                         {% else %}
                         <div class="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
-                            <ion-icon name="refresh" class="text-2xl text-primary"></ion-icon>
+                            {% icon "refresh" css_class="text-2xl text-primary" %}
                         </div>
                         {% endif %}
                         <div>
@@ -96,9 +96,9 @@
                 <ion-card-content class="p-4 text-center">
                     <div class="text-2xl font-bold">
                         {% if status.can_create_records %}
-                        <ion-icon name="checkmark-circle" color="success"></ion-icon>
+                        {% icon "checkmark-circle" css_class="text-success" %}
                         {% else %}
-                        <ion-icon name="close-circle" color="danger"></ion-icon>
+                        {% icon "close-circle" css_class="text-danger" %}
                         {% endif %}
                     </div>
                     <div class="text-sm" style="color: var(--ion-color-medium);">{% trans "Can Create" %}</div>
@@ -138,7 +138,7 @@
                             </ion-label>
                             <ion-button slot="end" size="small" fill="clear" color="danger"
                                 onclick="cancelEntry({{ entry.id }})">
-                                <ion-icon slot="icon-only" name="close-outline"></ion-icon>
+                                {% icon "close-outline" %}
                             </ion-button>
                         </ion-item>
                         {% endfor %}
@@ -169,7 +169,7 @@
                             </ion-label>
                             <ion-button slot="end" size="small" fill="clear" color="primary"
                                 onclick="retryEntry({{ entry.id }})">
-                                <ion-icon slot="icon-only" name="refresh-outline"></ion-icon>
+                                {% icon "refresh-outline" %}
                             </ion-button>
                         </ion-item>
                         {% endfor %}
@@ -230,7 +230,7 @@
                 <ion-accordion-group>
                     <ion-accordion value="network">
                         <ion-item slot="header">
-                            <ion-icon slot="start" name="wifi-outline"></ion-icon>
+                            {% icon "wifi-outline" %}
                             <ion-label>{% trans "Network Connectivity Failure" %}</ion-label>
                         </ion-item>
                         <div class="p-4" slot="content">
@@ -241,7 +241,7 @@
                     </ion-accordion>
                     <ion-accordion value="aeat">
                         <ion-item slot="header">
-                            <ion-icon slot="start" name="server-outline"></ion-icon>
+                            {% icon "server-outline" %}
                             <ion-label>{% trans "AEAT Service Unavailable" %}</ion-label>
                         </ion-item>
                         <div class="p-4" slot="content">
@@ -252,7 +252,7 @@
                     </ion-accordion>
                     <ion-accordion value="hash">
                         <ion-item slot="header">
-                            <ion-icon slot="start" name="link-outline"></ion-icon>
+                            {% icon "link-outline" %}
                             <ion-label>{% trans "Hash Chain Corruption" %}</ion-label>
                         </ion-item>
                         <div class="p-4" slot="content">
@@ -263,14 +263,14 @@
                                 hx-get="{% url 'verifactu:recovery' %}"
                                 hx-target="#main-content-area"
                                 hx-push-url="true">
-                                <ion-icon slot="start" name="construct-outline"></ion-icon>
+                                {% icon "construct-outline" %}
                                 {% trans "Go to Chain Recovery" %}
                             </ion-button>
                         </div>
                     </ion-accordion>
                     <ion-accordion value="cert">
                         <ion-item slot="header">
-                            <ion-icon slot="start" name="key-outline"></ion-icon>
+                            {% icon "key-outline" %}
                             <ion-label>{% trans "Certificate Expiration" %}</ion-label>
                         </ion-item>
                         <div class="p-4" slot="content">

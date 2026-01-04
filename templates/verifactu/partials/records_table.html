@@ -48,7 +48,7 @@
                         hx-get="{% url 'verifactu:record_detail' record.id %}"
                         hx-target="#main-content-area"
                         hx-push-url="true">
-                        <ion-icon slot="icon-only" name="eye-outline"></ion-icon>
+                        {% icon "eye-outline" %}
                     </ion-button>
                 </td>
             </tr>
